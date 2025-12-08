@@ -1,0 +1,1425 @@
+ТЗ:
+1. Требования к конструкции
+Конструкция должна представлять собой плоскую стержневую систему, составленную из
+прямолинейных стержней, последовательно соединённых друг с другом вдоль общей оси.
+Каждый стержень i характеризуется длиной Li
+, площадью поперечного сечения Ai
+. Материал
+стержней должен характеризоваться модулем упругости Ei
+, допускаемым напряжением [ ] σ i
+.
+2. Требования к нагрузкам
+На любое сечение конструкции могут быть наложены нулевые кинематические граничные
+условия (жёсткие опоры), запрещающие перемещения и повороты этих сечений во всех направлениях.
+Конструкция может быть нагружена в глобальных узлах j статическими сосредоточенными
+продольными усилиями Fj
+.
+Каждый стержень конструкции может быть нагружен постоянной вдоль его оси статической
+погонной нагрузкой qi
+.
+3. Требования к задачам
+Система должна обеспечивать решение линейной задачи статики для плоских стержневых
+конструкций.
+4. Общесистемные требования
+Особые требования к операционной системе не предъявляются. В случае реализации системы для
+работы под управлением операционной системы Microsoft Windows необходимо подготовить
+независимый исполняемый файл. При сдаче проекта необходимо будет записать видео,
+демонстрирующее работу разработанной системы.
+5. Требования к системе
+5.1. Требования к препроцессору (срок подготовки – к лабораторной работе № 3)
+Препроцессор системы должен обеспечивать:
+- ввод массивов данных, описывающих конструкцию и внешние воздействия;
+- формальную диагностику данных, описывающих конструкцию и внешние воздействия;
+- визуализацию конструкции и нагрузок;
+- формирование файла проекта.
+5.2. Требования к процессору (срок подготовки – к лабораторной работе № 4)
+Процессор системы должен обеспечивать расчёт вектора перемещений ∆ глобальных узлов
+конструкции.
+5.3. Требования к постпроцессору (срок подготовки – к лабораторной работе № 5)
+Постпроцессор системы должен обеспечивать:
+- расчёт компонент напряжённо-деформированного состояния конструкции (продольные силы
+Nx
+, нормальные напряжения σx
+, перемещения ux
+) по вектору перемещений ∆.
+- анализ результатов расчёта;
+- отображение результатов расчёта в табличном виде;
+- возможность получения всех компонент напряжённо-деформированного состояния в
+конкретном сечении конструкции;
+- отображение результатов расчёта в виде графиков, на оси ординат которых отложены
+компоненты напряжённо-деформированного состояния конструкции, а на оси абсцисс –
+локальные координаты стержней;
+- отображение результатов расчёта на конструкции в виде эпюр компонент напряжённодеформированного состояния;
+- формирование файла результатов расчёта (отчёта по решению задачи)
+
+Что уже сделано:
+Сделан ввод узлов и стержней, сохранение данных и их чтение из файла.
+
+Что нужно сделать:
+сейчас нужно сделать красивую визуализацию исправить косяки. 
+
+Что нужно исправить:
+1. Когда добавляешь еще один узел, опора конструкции не переносится
+2. qx на стержне, головка стрелки не совсем совпадает с основанием стрелки. 
+Кароче, нужно либо переместить головку к концу основания, либо сделать палочку кароче. 
+3. Самая важная проблема. Стрелка -qy направлена не правильно ! Она долждна смотреть грубо говоря на основание стержня или на ось x. Но она торчит и смотрит в никуда. 
+4. Тоже очень важная проблема. Левая или первая опора выглядит правильно!  Но вторая или же правая, выглядит не правильно! Ее нужно развернуть, и направить ее линии так, чтобы они были паралельны линиям левой опоры. 
+Надеюсь все понятно объяснил. 
+Пометка:
+Мы долго пытались разобраться в чем именно ошибка в данном пункте, оказалось что в модельке узла, у каждого есть fixX and fixY. Хотя судя по тз, 
+нам нужно в целом добавить в project_model fixLeft и fixRight. Потому что мы знаем, что опоры могут быть у самой правой и у самой левой. 
+Поэтому логично добавить в сам проект две булевые переменные. А не в каждой узел, а с узла удалить. 
+Я тебе скину весь код, это первостепенная важная ошибка, которую нужно исправить, если для решение проблемы не хватает контексата(кода), то проси
+Учти, что для решение этой проблемы понадобится поменять код во многих разных частях кода. 
+
+Вот код: 
+import 'package:equatable/equatable.dart';
+
+
+/// Узел конструкции
+class NodeModel extends Equatable {
+  final int id;
+  final double x; // координата x
+  final double y; // координата y
+  final double loadX; // [Н] сосредоточенная продольная сила (вдоль оси x)
+  final double loadY; // [Н] сосредоточенная поперечная сила (вдоль оси y)
+  final bool fixX; // запрещено перемещение по X (горизонтальное)
+  final bool fixY; // запрещено перемещение по Y (вертикальное)
+
+
+  const NodeModel({
+    required this.id,
+    required this.x,
+    double? y,
+    double? loadX,
+    double? loadY,
+    bool? fixX,
+    bool? fixY,
+  }) : y = y ?? 0,
+       loadX = loadX ?? 0.0,
+       loadY = loadY ?? 0.0,
+       fixX = fixX ?? false,
+       fixY = fixY ?? false;
+
+
+  NodeModel copyWith({
+    int? id,
+    double? x,
+    double? y,
+    double? loadX,
+    double? loadY,
+    bool? fixX,
+    bool? fixY,
+  }) {
+    return NodeModel(
+      id: id ?? this.id,
+      x: x ?? this.x,
+      y: y ?? this.y,
+      loadX: loadX ?? this.loadX,
+      loadY: loadY ?? this.loadY,
+      fixX: fixX ?? this.fixX,
+      fixY: fixY ?? this.fixY,
+    );
+  }
+
+
+  factory NodeModel.fromJson(Map<String, dynamic> json) => NodeModel(
+    id: json['id'] as int,
+    x: (json['x'] as num).toDouble(),
+    y: (json['y'] as num?)?.toDouble() ?? 0.0,
+    loadX: (json['loadX'] as num?)?.toDouble() ?? 0.0,
+    loadY: (json['loadY'] as num?)?.toDouble() ?? 0.0,
+    fixX: json['fixX'] ?? false,
+    fixY: json['fixY'] ?? false,
+  );
+
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'x': x,
+    'y': y,
+    'loadX': loadX,
+    'loadY': loadY,
+    'fixX': fixX,
+    'fixY': fixY,
+  };
+
+
+  @override
+  List<Object?> get props => [id, x, y, loadX, loadY, fixX, fixY];
+}
+
+
+import 'package:equatable/equatable.dart';
+import 'package:saprbar_desktop/core/models/element_model.dart';
+import 'package:saprbar_desktop/core/models/node_model.dart';
+
+
+class ProjectModel extends Equatable {
+  final String name;
+  final List<NodeModel> nodes;
+  final List<ElementModel> elements;
+
+
+  const ProjectModel({
+    required this.name,
+    required this.nodes,
+    required this.elements,
+  });
+
+
+  /// Удалить последний узел и связанные стержни
+  /// Возвращает новый ProjectModel (не мутирует текущий)
+  ProjectModel deleteLastNode() {
+    if (nodes.isEmpty) return this;
+
+
+    final List<NodeModel> newNodes = List.from(nodes)..removeLast();
+    final int deletedNodeId = nodes.last.id;
+
+
+    // Удаляем стержни, связанные с удалённым узлом
+    final List<ElementModel> newElements = elements
+        .where(
+          (e) => e.nodeStartId != deletedNodeId && e.nodeEndId != deletedNodeId,
+        )
+        .toList();
+
+
+    return copyWith(nodes: newNodes, elements: newElements);
+  }
+
+
+  factory ProjectModel.fromJson(Map<String, dynamic> json) {
+    return ProjectModel(
+      name: json['name'] as String,
+      nodes: (json['nodes'] as List).map((e) => NodeModel.fromJson(e)).toList(),
+      elements: (json['elements'] as List)
+          .map((e) => ElementModel.fromJson(e))
+          .toList(),
+    );
+  }
+
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'nodes': nodes.map((e) => e.toJson()).toList(),
+    'elements': elements.map((e) => e.toJson()).toList(),
+  };
+
+
+  ProjectModel copyWith({
+    String? name,
+    List<NodeModel>? nodes,
+    List<ElementModel>? elements,
+  }) {
+    return ProjectModel(
+      name: name ?? this.name,
+      nodes: nodes ?? this.nodes,
+      elements: elements ?? this.elements,
+    );
+  }
+
+
+  @override
+  List<Object?> get props => [name, nodes, elements];
+}
+import 'package:bloc/bloc.dart';
+import 'package:equatable/equatable.dart';
+import 'package:saprbar_desktop/core/models/element_model.dart';
+import 'package:saprbar_desktop/core/models/node_model.dart';
+import 'package:saprbar_desktop/core/models/project_model.dart';
+import 'package:saprbar_desktop/core/repository/project_repository.dart';
+
+
+part 'pre_event.dart';
+part 'pre_state.dart';
+
+
+class PreBloc extends Bloc<PreEvent, PreState> {
+  final ProjectRepository repository;
+
+
+  PreBloc(this.repository) : super(PreInitialState()) {
+    on<PreLoadEvent>(_onLoad);
+    on<PreDeleteEvent>(_onDelete);
+    on<PreSaveEvent>(_onSave);
+    on<PrePlusEvent>(_onAdd);
+    on<PreSetSupportsEvent>(_onSetSupports);
+  }
+
+
+  /// Загружаем проект (если уже открыт)
+  Future<void> _onLoad(PreLoadEvent event, Emitter<PreState> emit) async {
+    emit(PreLoadingState());
+
+
+    try {
+      ProjectModel? curProject = repository.currentProject;
+
+
+      if (curProject == null) {
+        emit(PreFailureState(message: 'Проект не загружен'));
+        return;
+      }
+
+
+      // ВАЖНО: Гарантируем минимальный проект (1 узел если пуст)
+      if (curProject.nodes.isEmpty) {
+        curProject = curProject.copyWith(
+          nodes: [NodeModel(id: 1, x: 0)],
+          elements: [],
+        );
+        await repository.updateProject(curProject);
+      }
+
+
+      emit(PreLoadedState(project: curProject));
+    } catch (e) {
+      emit(PreFailureState(message: e.toString()));
+    }
+  }
+
+
+  /// Сохранение проекта (узлов и/или элементов)
+  Future<void> _onSave(PreSaveEvent event, Emitter<PreState> emit) async {
+    final currentState = state;
+    if (currentState is! PreLoadedState) {
+      emit(PreFailureState(message: 'Проект не загружен'));
+      return;
+    }
+
+
+    try {
+      final newNodes =
+          event.nodes.isNotEmpty ? event.nodes : currentState.project.nodes;
+      final newElements =
+          event.elements.isNotEmpty
+              ? event.elements
+              : currentState.project.elements;
+
+
+      final ProjectModel project = ProjectModel(
+        name: currentState.project.name,
+        nodes: newNodes,
+        elements: newElements,
+      );
+
+
+      // Эмитим ПЕРЕД сохранением в репозиторий
+      emit(PreLoadedState(project: project));
+
+
+      // Сохраняем в репозиторий асинхронно
+      await repository.updateProject(project);
+    } catch (e) {
+      emit(PreFailureState(message: e.toString()));
+    }
+  }
+
+
+  /// Удаление последнего узла
+  Future<void> _onDelete(PreDeleteEvent event, Emitter<PreState> emit) async {
+    emit(PreLoadingState());
+    try {
+      final curProject = repository.currentProject;
+
+
+      if (curProject == null || curProject.nodes.length <= 1) {
+        emit(PreFailureState(message: 'Нельзя удалить последний узел'));
+        return;
+      }
+
+
+      final updatedProject = curProject.deleteLastNode();
+      await repository.updateProject(updatedProject);
+      emit(PreLoadedState(project: updatedProject));
+    } catch (e) {
+      emit(PreFailureState(message: e.toString()));
+    }
+  }
+
+
+  /// Добавление нового узла
+  /// ВАЖНО: Сохраняем ВСЕ старые элементы и добавляем ТОЛЬКО новый стержень!
+  Future<void> _onAdd(PrePlusEvent event, Emitter<PreState> emit) async {
+    try {
+      final curProject = repository.currentProject;
+
+
+      if (curProject == null) {
+        emit(PreFailureState(message: 'Проект не загружен'));
+        return;
+      }
+
+
+      late final double newX;
+      late final int newId;
+
+
+      if (curProject.nodes.isEmpty) {
+        newX = 0;
+        newId = 1;
+      } else {
+        newX = curProject.nodes.last.x + 1;
+        newId = curProject.nodes.last.id + 1;
+      }
+
+
+      final newNode = NodeModel(id: newId, x: newX);
+      final newNodes = [...curProject.nodes, newNode];
+
+
+      // ✅ КЛЮЧЕВОЕ: Сохраняем ВСЕ старые элементы
+      // и добавляем ТОЛЬКО новый стержень (от предпоследнего к новому узлу)
+      final newElements = <ElementModel>[...curProject.elements];
+
+
+      // Если есть узлы для создания стержня
+      if (newNodes.length >= 2) {
+        final newElemId = (newElements.isEmpty ? 1 : newElements.last.id + 1);
+        newElements.add(
+          ElementModel(
+            id: newElemId,
+            nodeStartId: newNodes[newNodes.length - 2].id,
+            nodeEndId: newNodes[newNodes.length - 1].id,
+          ),
+        );
+      }
+
+
+      final newProject = curProject.copyWith(
+        nodes: newNodes,
+        elements: newElements,
+      );
+
+
+      await repository.updateProject(newProject);
+      emit(PreLoadedState(project: newProject));
+    } catch (e) {
+      emit(PreFailureState(message: e.toString()));
+    }
+  }
+
+
+  /// Установка граничных условий (опор)
+  /// Варианты: none, left, right, both
+  Future<void> _onSetSupports(
+    PreSetSupportsEvent event,
+    Emitter<PreState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is! PreLoadedState) {
+      emit(PreFailureState(message: 'Проект не загружен'));
+      return;
+    }
+
+
+    try {
+      final nodes = currentState.project.nodes;
+      if (nodes.isEmpty) {
+        emit(PreFailureState(message: 'Нет узлов для установки опор'));
+        return;
+      }
+
+
+      final updatedNodes = <NodeModel>[];
+
+
+      for (final node in nodes) {
+        late NodeModel newNode;
+
+
+        switch (event.supportMode) {
+          case SupportMode.none:
+            newNode = node.copyWith(fixX: false, fixY: false);
+            break;
+
+          case SupportMode.left:
+            if (node == nodes.first) {
+              newNode = node.copyWith(fixX: true, fixY: false);
+            } else {
+              newNode = node.copyWith(fixX: false, fixY: false);
+            }
+            break;
+
+          case SupportMode.right:
+            if (node == nodes.last) {
+              newNode = node.copyWith(fixX: true, fixY: false);
+            } else {
+              newNode = node.copyWith(fixX: false, fixY: false);
+            }
+            break;
+
+          case SupportMode.both:
+            if (node == nodes.first || node == nodes.last) {
+              newNode = node.copyWith(fixX: true, fixY: false);
+            } else {
+              newNode = node.copyWith(fixX: false, fixY: false);
+            }
+            break;
+        }
+
+
+        updatedNodes.add(newNode);
+      }
+
+
+      final newProject = currentState.project.copyWith(nodes: updatedNodes);
+
+
+      await repository.updateProject(newProject);
+      emit(PreLoadedState(project: newProject));
+    } catch (e) {
+      emit(PreFailureState(message: e.toString()));
+    }
+  }
+}
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:saprbar_desktop/features/pre/bloc/pre_bloc.dart';
+import 'package:saprbar_desktop/features/pre/view/node_input_table.dart';
+import 'package:saprbar_desktop/features/pre/view/element_input_table.dart';
+
+
+class PrePanel extends StatelessWidget {
+  const PrePanel({super.key});
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: MediaQuery.of(context).size.width * 0.3,
+      color: Colors.grey.shade800,
+      child: BlocBuilder<PreBloc, PreState>(
+        builder: (context, state) {
+          // Если проект не загружен → пустая панель
+          if (state is PreInitialState) {
+            return Center(
+              child: Text(
+                'Проект не выбран',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              ),
+            );
+          }
+
+
+          // Если идёт загрузка → спиннер
+          if (state is PreLoadingState) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+
+          // Если ошибка → показываем её
+          if (state is PreFailureState) {
+            return Center(
+              child: Text(
+                'Ошибка: ${state.message}',
+                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+
+          // Если проект загружен → показываем таблицы
+          if (state is PreLoadedState) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ПАНЕЛЬ УПРАВЛЕНИЯ ОПОРАМИ
+                Container(
+                  color: Colors.grey.shade900,
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Граничные условия',
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                context
+                                    .read<PreBloc>()
+                                    .add(PreSetSupportsEvent(
+                                      supportMode: SupportMode.none,
+                                    ));
+                              },
+                              icon: const Icon(Icons.close, size: 16),
+                              label: const Text('Нет опор'),
+                              style: ElevatedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 6,
+                                    ),
+                                backgroundColor: Colors.grey.shade700,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                context
+                                    .read<PreBloc>()
+                                    .add(PreSetSupportsEvent(
+                                      supportMode: SupportMode.left,
+                                    ));
+                              },
+                              icon: const Icon(Icons.arrow_back, size: 16),
+                              label: const Text('Левая'),
+                              style: ElevatedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 6,
+                                    ),
+                                backgroundColor: Colors.blue.shade700,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                context
+                                    .read<PreBloc>()
+                                    .add(PreSetSupportsEvent(
+                                      supportMode: SupportMode.right,
+                                    ));
+                              },
+                              icon: const Icon(Icons.arrow_forward, size: 16),
+                              label: const Text('Правая'),
+                              style: ElevatedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 6,
+                                    ),
+                                backgroundColor: Colors.blue.shade700,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                context
+                                    .read<PreBloc>()
+                                    .add(PreSetSupportsEvent(
+                                      supportMode: SupportMode.both,
+                                    ));
+                              },
+                              icon: const Icon(Icons.unfold_less, size: 16),
+                              label: const Text('Обе'),
+                              style: ElevatedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 6,
+                                    ),
+                                backgroundColor: Colors.green.shade700,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+
+                // ТАБЛИЦА УЗЛОВ (скролится внутри себя)
+                Expanded(child: NodeInputTable()),
+
+
+                // РАЗДЕЛИТЕЛЬ
+                Divider(color: Colors.grey.shade700, height: 1, thickness: 1),
+
+
+                // ТАБЛИЦА СТЕРЖНЕЙ (скролится внутри себя)
+                Expanded(child: ElementInputTable()),
+              ],
+            );
+          }
+
+
+          // Fallback
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+}
+import 'package:flutter/material.dart';
+import 'dart:math';
+import 'package:saprbar_desktop/core/models/node_model.dart';
+import 'package:saprbar_desktop/features/pre/vizualization/visualization_model.dart';
+
+class VisualizationPainter extends CustomPainter {
+  final VisualizationModel model;
+
+  final Paint axisPaint =
+      Paint()
+        ..color = Colors.grey.shade600
+        ..strokeWidth = 1.0;
+
+  final Paint centerLinePaint =
+      Paint()
+        ..color = Colors.grey.shade500
+        ..strokeWidth = 0.5;
+
+  final Paint sectionFillPaint =
+      Paint()
+        ..color = Colors.white.withOpacity(0.2)
+        ..style = PaintingStyle.fill;
+
+  final Paint sectionStrokePaint =
+      Paint()
+        ..color = Colors.blue
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+
+  final Paint nodePaint =
+      Paint()
+        ..color = Colors.blue
+        ..strokeWidth = 2.0;
+
+  final Paint fixedNodePaint =
+      Paint()
+        ..color = Colors.red
+        ..strokeWidth = 2.0;
+
+  final Paint pointLoadPaint =
+      Paint()
+        ..color = Colors.orange
+        ..strokeWidth = 3.0;
+
+  final Paint distribLoadPaint =
+      Paint()
+        ..color = Colors.green
+        ..strokeWidth = 2.5;
+
+  final Paint longitudinalLoadPaint =
+      Paint()
+        ..color = Colors.amber
+        ..strokeWidth = 2.5;
+
+  VisualizationPainter(this.model);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..color = Colors.grey.shade800,
+    );
+
+    if (model.nodes.isEmpty) {
+      _drawEmptyState(canvas, size);
+      return;
+    }
+
+    _drawCenterLine(canvas);
+    _drawAxis(canvas);
+    _drawElements(canvas);
+    _drawDistributedLoads(canvas);
+    _drawLongitudinalLoads(canvas);
+    _drawNodes(canvas);
+    _drawPointLoads(canvas);
+    _drawSupports(canvas);
+  }
+
+  void _drawEmptyState(Canvas canvas, Size size) {
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: 'Добавьте узлы для визуализации конструкции',
+        style: TextStyle(color: Colors.white, fontSize: 16),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(size.width / 2 - textPainter.width / 2, size.height / 2),
+    );
+  }
+
+  void _drawCenterLine(Canvas canvas) {
+    if (model.nodes.length < 2) return;
+    final xMin = model.xToPixel(model.nodes.first.x);
+    final xMax = model.xToPixel(model.nodes.last.x);
+    final y = model.centerY;
+    _drawDashedLine(
+      canvas,
+      Offset(xMin - 50, y),
+      Offset(xMax + 50, y),
+      centerLinePaint,
+    );
+  }
+
+  void _drawAxis(Canvas canvas) {
+    if (model.nodes.length < 2) return;
+    final xMin = model.xToPixel(model.nodes.first.x);
+    final xMax = model.xToPixel(model.nodes.last.x);
+    final y = model.centerY;
+    canvas.drawLine(Offset(xMin, y), Offset(xMax, y), axisPaint);
+  }
+
+  void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {
+    final dx = end.dx - start.dx;
+    final dy = end.dy - start.dy;
+    final distance = sqrt(dx * dx + dy * dy);
+    final steps = (distance / 10).toInt();
+
+    for (int i = 0; i < steps; i++) {
+      final t1 = i / steps;
+      final t2 = (i + 0.5) / steps;
+      final p1 = Offset(start.dx + dx * t1, start.dy + dy * t1);
+      final p2 = Offset(start.dx + dx * t2, start.dy + dy * t2);
+      canvas.drawLine(p1, p2, paint);
+    }
+  }
+
+  void _drawElements(Canvas canvas) {
+    if (model.elements.isEmpty) return;
+    double maxArea = 0;
+    for (final element in model.elements) {
+      if (element.A > maxArea) maxArea = element.A;
+    }
+    if (maxArea == 0) maxArea = 1;
+
+    for (final element in model.elements) {
+      final startNode = model.nodes.firstWhere(
+        (n) => n.id == element.nodeStartId,
+        orElse: () => NodeModel(id: -1, x: 0),
+      );
+      final endNode = model.nodes.firstWhere(
+        (n) => n.id == element.nodeEndId,
+        orElse: () => NodeModel(id: -1, x: 0),
+      );
+
+      final x1 = model.xToPixel(startNode.x);
+      final x2 = model.xToPixel(endNode.x);
+      final y = model.centerY;
+      final visualHeight = model.getVisualSectionHeight(element.A, maxArea);
+
+      final rect = Rect.fromLTRB(
+        x1,
+        y - visualHeight / 2,
+        x2,
+        y + visualHeight / 2,
+      );
+      canvas.drawRect(rect, sectionFillPaint);
+      canvas.drawRect(rect, sectionStrokePaint);
+    }
+  }
+
+  /// Поперечная нагрузка qy (вверх/вниз)
+  void _drawDistributedLoads(Canvas canvas) {
+    for (final element in model.elements) {
+      if (element.qy == 0) continue;
+
+      final startNode = model.nodes.firstWhere(
+        (n) => n.id == element.nodeStartId,
+        orElse: () => NodeModel(id: -1, x: 0),
+      );
+      final endNode = model.nodes.firstWhere(
+        (n) => n.id == element.nodeEndId,
+        orElse: () => NodeModel(id: -1, x: 0),
+      );
+
+      final x1 = model.xToPixel(startNode.x);
+      final x2 = model.xToPixel(endNode.x);
+      final y = model.centerY;
+      final arrowHeight = model.distributedLoadArrowHeight;
+
+      for (int i = 0; i <= model.distributedLoadArrowCount; i++) {
+        final t = i / model.distributedLoadArrowCount;
+        final xPos = x1 + (x2 - x1) * t;
+
+        final isPositive = element.qy > 0;
+        final startY = y + (isPositive ? 0 : arrowHeight);
+        final endY = y + (isPositive ? arrowHeight : 0);
+
+        canvas.drawLine(
+          Offset(xPos, startY),
+          Offset(xPos, endY),
+          distribLoadPaint,
+        );
+
+        _drawArrowHeadVertical(
+          canvas,
+          Offset(xPos, endY),
+          isPositive ? 1 : -1,
+          distribLoadPaint,
+        );
+      }
+
+      // ✅ ИСПРАВЛЕНО: Текст выравнен правильно
+      final textOffsetX = (x1 + x2) / 2 - 40;
+      final textOffsetY =
+          element.qy > 0
+              ? y +
+                  arrowHeight +
+                  8 // Выше стрелок, если вверх
+              : y - arrowHeight - 18; // Ниже стрелок, если вниз
+
+      _drawText(
+        canvas,
+        'qy=${element.qy.toStringAsFixed(1)} Н/м',
+        Offset(textOffsetX, textOffsetY),
+        Colors.green,
+        fontSize: 10,
+      );
+    }
+  }
+
+  /// Продольная нагрузка qx (вдоль оси стержня)
+  void _drawLongitudinalLoads(Canvas canvas) {
+    for (final element in model.elements) {
+      if (element.qx == 0) continue;
+
+      final startNode = model.nodes.firstWhere(
+        (n) => n.id == element.nodeStartId,
+        orElse: () => NodeModel(id: -1, x: 0),
+      );
+      final endNode = model.nodes.firstWhere(
+        (n) => n.id == element.nodeEndId,
+        orElse: () => NodeModel(id: -1, x: 0),
+      );
+
+      final x1 = model.xToPixel(startNode.x);
+      final x2 = model.xToPixel(endNode.x);
+      final y = model.centerY;
+
+      const int arrowCount = 3;
+      const double arrowSize = 12;
+      const double arrowHeadSize = 8;
+
+      for (int i = 1; i <= arrowCount; i++) {
+        final t = i / (arrowCount + 1);
+        final xPos = x1 + (x2 - x1) * t;
+
+        final direction = element.qx > 0 ? 1 : -1;
+
+        final lineStart = xPos - direction * (arrowSize - arrowHeadSize) / 2;
+        final lineEnd = xPos + direction * (arrowSize - arrowHeadSize) / 2;
+
+        canvas.drawLine(
+          Offset(lineStart, y),
+          Offset(lineEnd, y),
+          longitudinalLoadPaint,
+        );
+        _drawArrowHeadHorizontal(
+          canvas,
+          Offset(lineEnd, y),
+          direction,
+          longitudinalLoadPaint,
+        );
+      }
+
+      _drawText(
+        canvas,
+        'qx=${element.qx.toStringAsFixed(1)} Н/м',
+        Offset((x1 + x2) / 2 - 35, y - 20),
+        Colors.amber,
+        fontSize: 10,
+      );
+    }
+  }
+
+  void _drawNodes(Canvas canvas) {
+    for (final node in model.nodes) {
+      final x = model.xToPixel(node.x);
+      final y = model.centerY + node.y * model.scale;
+
+      final isFixed = node.fixX || node.fixY;
+      final paint = isFixed ? fixedNodePaint : nodePaint;
+
+      canvas.drawCircle(Offset(x, y), model.nodeRadius, paint);
+      _drawText(
+        canvas,
+        'N${node.id}',
+        Offset(x - 8, y - 14),
+        Colors.white,
+        fontSize: 11,
+      );
+    }
+  }
+
+  void _drawPointLoads(Canvas canvas) {
+    const double arrowSize = 22;
+
+    for (final node in model.nodes) {
+      final x = model.xToPixel(node.x);
+      final y = model.centerY + node.y * model.scale;
+
+      // Нагрузка Fx
+      if (node.loadX != 0) {
+        final direction = node.loadX > 0 ? 1 : -1;
+
+        final startX = x;
+        final endX = x + direction * arrowSize;
+
+        canvas.drawLine(Offset(startX, y), Offset(endX, y), pointLoadPaint);
+        _drawArrowHeadHorizontal(
+          canvas,
+          Offset(endX, y),
+          direction,
+          pointLoadPaint,
+        );
+
+        _drawText(
+          canvas,
+          'Fx=${node.loadX.toStringAsFixed(0)}',
+          Offset(x + direction * arrowSize / 2 - 25, y + 12),
+          Colors.orange,
+          fontSize: 9,
+        );
+      }
+
+      // Нагрузка Fy
+      if (node.loadY != 0) {
+        final direction = node.loadY > 0 ? -1 : 1;
+
+        final startY = y;
+        final endY = y + direction * arrowSize;
+
+        canvas.drawLine(Offset(x, startY), Offset(x, endY), pointLoadPaint);
+        _drawArrowHeadVertical(
+          canvas,
+          Offset(x, endY),
+          direction,
+          pointLoadPaint,
+        );
+
+        _drawText(
+          canvas,
+          'Fy=${node.loadY.toStringAsFixed(0)}',
+          Offset(x + 10, y + direction * arrowSize / 2 - 5),
+          Colors.orange,
+          fontSize: 9,
+        );
+      }
+    }
+  }
+
+  /// Наконечник для ВЕРТИКАЛЬНОЙ стрелки
+  void _drawArrowHeadVertical(
+    Canvas canvas,
+    Offset tip,
+    int direction,
+    Paint paint,
+  ) {
+    const double size = 6.5;
+
+    canvas.drawPath(
+      Path()
+        ..moveTo(tip.dx - size / 2, tip.dy)
+        ..lineTo(tip.dx + size / 2, tip.dy)
+        ..lineTo(tip.dx, tip.dy + direction * size)
+        ..close(),
+      paint,
+    );
+  }
+
+  /// Наконечник для ГОРИЗОНТАЛЬНОЙ стрелки
+  void _drawArrowHeadHorizontal(
+    Canvas canvas,
+    Offset tip,
+    int direction,
+    Paint paint,
+  ) {
+    const double size = 6.5;
+
+    canvas.drawPath(
+      Path()
+        ..moveTo(tip.dx - direction * size, tip.dy - size / 2)
+        ..lineTo(tip.dx - direction * size, tip.dy + size / 2)
+        ..lineTo(tip.dx, tip.dy)
+        ..close(),
+      paint,
+    );
+  }
+
+  /// Условия закрепления (опоры)
+  void _drawSupports(Canvas canvas) {
+    for (final node in model.nodes) {
+      final x = model.xToPixel(node.x);
+      final y = model.centerY + node.y * model.scale;
+
+      if (node.fixX) {
+        _drawFixedXSupport(canvas, Offset(x, y));
+      }
+      if (node.fixY) {
+        _drawFixedYSupport(canvas, Offset(x, y));
+      }
+    }
+  }
+
+  /// Опора по X (левая) - ПРИВЯЗАНА К УЗЛУ
+  void _drawFixedXSupport(Canvas canvas, Offset center) {
+    const double size = 14;
+    final paint =
+        Paint()
+          ..color = Colors.red
+          ..strokeWidth = 1.5;
+
+    // Вертикальная линия ровно на узле
+    canvas.drawLine(
+      Offset(center.dx, center.dy - size),
+      Offset(center.dx, center.dy + size),
+      paint,
+    );
+
+    // Диагональные линии под 45° (влево-вниз)
+    const int lineCount = 5;
+    const double spacing = 6.5;
+    const double lineLength = 10;
+
+    for (int i = 0; i < lineCount; i++) {
+      final yStart = center.dy - size + (i * spacing);
+      final xStart = center.dx;
+
+      // Идём влево и вниз
+      final xEnd = xStart - lineLength / sqrt(2);
+      final yEnd = yStart + lineLength / sqrt(2);
+
+      canvas.drawLine(Offset(xStart, yStart), Offset(xEnd, yEnd), paint);
+    }
+  }
+
+  /// Опора по Y (правая) - ЗЕРКАЛО левой
+  void _drawFixedYSupport(Canvas canvas, Offset center) {
+    const double size = 14;
+    final paint =
+        Paint()
+          ..color = Colors.red
+          ..strokeWidth = 1.5;
+
+    // Вертикальная линия ровно на узле
+    canvas.drawLine(
+      Offset(center.dx, center.dy - size),
+      Offset(center.dx, center.dy + size),
+      paint,
+    );
+
+    // ✅ ИСПРАВЛЕНО: Диагональные линии под 45° (вправо-ВВЕРХ, не вниз!)
+    // Зеркало левой: если левая идёт влево-вниз, то правая идёт вправо-ВВЕРХ
+    const int lineCount = 5;
+    const double spacing = 6.5;
+    const double lineLength = 10;
+
+    for (int i = 0; i < lineCount; i++) {
+      final yStart = center.dy - size + (i * spacing);
+      final xStart = center.dx;
+
+      // Идём вправо и ВВЕРХ (противоположно левой опоре)
+      final xEnd = xStart + lineLength / sqrt(2);
+      final yEnd = yStart - lineLength / sqrt(2); // ← МИНУС вместо ПЛЮСА!
+
+      canvas.drawLine(Offset(xStart, yStart), Offset(xEnd, yEnd), paint);
+    }
+  }
+
+  void _drawText(
+    Canvas canvas,
+    String text,
+    Offset offset,
+    Color color, {
+    double fontSize = 12,
+  }) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: color,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(canvas, offset);
+  }
+
+  @override
+  bool shouldRepaint(VisualizationPainter oldDelegate) {
+    return oldDelegate.model != this.model;
+  }
+}
+import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart';
+import 'package:saprbar_desktop/core/models/node_model.dart';
+import 'package:saprbar_desktop/core/models/element_model.dart';
+
+/// Модель для визуализации конструкции
+class VisualizationModel extends Equatable {
+  final List<NodeModel> nodes;
+  final List<ElementModel> elements;
+
+  // Параметры визуализации
+  final double padding;
+  final double nodeRadius;
+  final double scale;
+  final Offset offset;
+
+  // Параметры для нагрузок
+  final double distributedLoadArrowHeight;
+  final int distributedLoadArrowCount;
+  final double maxSectionHeightPixels;
+
+  const VisualizationModel({
+    required this.nodes,
+    required this.elements,
+    this.padding = 40.0,
+    this.nodeRadius = 3.5,
+    this.scale = 50.0,
+    this.offset = const Offset(0, 0),
+    this.distributedLoadArrowHeight = 18.0,
+    this.distributedLoadArrowCount = 4,
+    this.maxSectionHeightPixels = 60.0,
+  });
+
+  /// Преобразование координаты X в пиксели
+  double xToPixel(double x) => x * scale + offset.dx + padding;
+
+  /// Y для визуализации (центр конструкции)
+  double get centerY => offset.dy + padding;
+
+  /// Вычисляем границы конструкции
+  (double, double) getXBounds() {
+    if (nodes.isEmpty) return (0, 100);
+    final xValues = nodes.map((n) => n.x).toList();
+    return (xValues.reduce((a, b) => a < b ? a : b),
+        xValues.reduce((a, b) => a > b ? a : b));
+  }
+
+  /// Получить визуальную высоту сечения на основе площади
+  double getVisualSectionHeight(double area, double maxArea) {
+    if (maxArea <= 0 || area <= 0) return 4.0;
+    final ratio = (area / maxArea).clamp(0, 1);
+    return 4.0 + ratio * (maxSectionHeightPixels - 4.0);
+  }
+
+  VisualizationModel copyWith({
+    List<NodeModel>? nodes,
+    List<ElementModel>? elements,
+    double? padding,
+    double? nodeRadius,
+    double? scale,
+    Offset? offset,
+    double? distributedLoadArrowHeight,
+    int? distributedLoadArrowCount,
+    double? maxSectionHeightPixels,
+  }) {
+    return VisualizationModel(
+      nodes: nodes ?? this.nodes,
+      elements: elements ?? this.elements,
+      padding: padding ?? this.padding,
+      nodeRadius: nodeRadius ?? this.nodeRadius,
+      scale: scale ?? this.scale,
+      offset: offset ?? this.offset,
+      distributedLoadArrowHeight:
+          distributedLoadArrowHeight ?? this.distributedLoadArrowHeight,
+      distributedLoadArrowCount:
+          distributedLoadArrowCount ?? this.distributedLoadArrowCount,
+      maxSectionHeightPixels:
+          maxSectionHeightPixels ?? this.maxSectionHeightPixels,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    nodes,
+    elements,
+    padding,
+    nodeRadius,
+    scale,
+    offset,
+    distributedLoadArrowHeight,
+    distributedLoadArrowCount,
+    maxSectionHeightPixels,
+  ];
+}
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:saprbar_desktop/features/pre/bloc/pre_bloc.dart';
+import 'package:saprbar_desktop/features/pre/vizualization/visualization_model.dart';
+import 'package:saprbar_desktop/features/pre/vizualization/visualization_painter.dart';
+
+class CanvasArea extends StatefulWidget {
+  const CanvasArea({super.key});
+
+  @override
+  State<CanvasArea> createState() => _CanvasAreaState();
+}
+
+class _CanvasAreaState extends State<CanvasArea> {
+  late VisualizationModel _visualizationModel;
+  double _scale = 50.0;
+  Offset _offset = const Offset(0, 0);
+  bool _initialFitDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _visualizationModel = VisualizationModel(
+      nodes: [],
+      elements: [],
+      scale: _scale,
+      offset: _offset,
+    );
+  }
+
+  /// Рассчитываем оптимальный масштаб и смещение
+  void _fitToView(Size canvasSize) {
+    final state = context.read<PreBloc>().state;
+    if (state is! PreLoadedState || state.project.nodes.isEmpty) {
+      return;
+    }
+
+    final (xMin, xMax) = (
+      state.project.nodes.map((n) => n.x).reduce((a, b) => a < b ? a : b),
+      state.project.nodes.map((n) => n.x).reduce((a, b) => a > b ? a : b),
+    );
+
+    final xRange = xMax - xMin;
+
+    // Если все узлы в одной точке
+    if (xRange <= 0) {
+      setState(() {
+        _scale = 50.0;
+        _offset = Offset(canvasSize.width / 2 - 50, canvasSize.height / 2 - 40);
+        _updateVisualizationModel(state);
+      });
+      return;
+    }
+
+    // Рассчитываем масштаб так, чтобы все поместилось с отступом
+    final availableWidth = canvasSize.width - 100;
+    final newScale = availableWidth / xRange;
+
+    // Рассчитываем смещение, чтобы конструкция была по центру
+    final totalPixelWidth = xRange * newScale;
+    final leftMargin = (canvasSize.width - totalPixelWidth) / 2;
+
+    setState(() {
+      _scale = newScale.clamp(5.0, 300.0);
+      _offset = Offset(leftMargin - xMin * _scale, canvasSize.height / 2 - 40);
+      _updateVisualizationModel(state);
+    });
+  }
+
+  void _updateVisualizationModel(PreLoadedState state) {
+    _visualizationModel = VisualizationModel(
+      nodes: state.project.nodes,
+      elements: state.project.elements,
+      scale: _scale,
+      offset: _offset,
+      nodeRadius: 3.5,
+      distributedLoadArrowHeight: 18.0,
+      distributedLoadArrowCount: 4,
+      maxSectionHeightPixels: 60.0,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<PreBloc, PreState>(
+      listenWhen: (prev, curr) {
+        // Перерисовываем при любом изменении проекта
+        if (prev is PreLoadedState && curr is PreLoadedState) {
+          return prev.project.nodes.length != curr.project.nodes.length ||
+              prev.project != curr.project;
+        }
+        return curr is PreLoadedState;
+      },
+      listener: (context, state) {
+        if (state is PreLoadedState) {
+          setState(() {
+            _updateVisualizationModel(state);
+            // ✅ Пересчитываем масштаб при добавлении/удалении узлов
+            final constraints = context.findRenderObject() as RenderBox?;
+            if (constraints != null) {
+              _fitToView(Size(constraints.size.width, constraints.size.height));
+            }
+          });
+        }
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Первый раз при загрузке
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!_initialFitDone &&
+                context.read<PreBloc>().state is PreLoadedState) {
+              _initialFitDone = true;
+              _fitToView(Size(constraints.maxWidth, constraints.maxHeight));
+            }
+          });
+
+          return Container(
+            color: Colors.grey.shade800,
+            child: Stack(
+              children: [
+                // Холст
+                CustomPaint(
+                  painter: VisualizationPainter(_visualizationModel),
+                  size: Size.infinite,
+                ),
+
+                // Кнопка "Fit to view" (вписать в окно)
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: FloatingActionButton.small(
+                    onPressed: () {
+                      _fitToView(
+                        Size(constraints.maxWidth, constraints.maxHeight),
+                      );
+                    },
+                    tooltip: 'Вписать конструкцию в окно',
+                    child: const Icon(Icons.zoom_out_map),
+                  ),
+                ),
+
+                // Информация по масштабу
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Масштаб: ${_scale.toStringAsFixed(1)} px/ед',
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+

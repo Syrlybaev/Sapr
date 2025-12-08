@@ -1,86 +1,70 @@
 import 'package:equatable/equatable.dart';
-import 'package:uuid/uuid.dart';
 
 
 /// Узел конструкции
-class Node extends Equatable {
-  final String id;
-  final double x; // корды
-  final double y;// корды
-  final double loadX; // [Н]
-  final double loadY; // [Н]
-  final bool fixX; // запрещено перемещение по X
-  final bool fixY; // запрещено перемещение по Y
-  final bool fixZ; // запрещёно перемещение по Z
+class NodeModel extends Equatable {
+  final int id;
+  final double x; // координата x
+  final double y; // координата y
+  final double loadX; // [Н] сосредоточенная продольная сила (вдоль оси x)
+  final double loadY; // [Н] сосредоточенная поперечная сила (вдоль оси y)
 
-  Node({
-    String? id,
+
+
+  const NodeModel({
+    required this.id,
     required this.x,
-    required this.y,
+    double? y,
     double? loadX,
     double? loadY,
     bool? fixX,
     bool? fixY,
-    bool? fixZ,
-  })  : id = id ?? Uuid().v4(),
-        loadX = loadX ?? 0.0,
-        loadY = loadY ?? 0.0,
-        fixX = fixX ?? false,
-        fixY = fixY ?? false,
-        fixZ = fixZ ?? false;
+  }) : y = y ?? 0,
+       loadX = loadX ?? 0.0,
+       loadY = loadY ?? 0.0
+      ;
 
-  Node copyWith({
-    String? id,
+
+  NodeModel copyWith({
+    int? id,
     double? x,
     double? y,
     double? loadX,
     double? loadY,
     bool? fixX,
-    bool? fixY, 
-    bool? fixZ,
+    bool? fixY,
   }) {
-    return Node(
+    return NodeModel(
       id: id ?? this.id,
       x: x ?? this.x,
       y: y ?? this.y,
       loadX: loadX ?? this.loadX,
       loadY: loadY ?? this.loadY,
-      fixX: fixX ?? this.fixX,
-      fixY: fixY ?? this.fixY,
-      fixZ: fixZ ?? this.fixZ,
     );
   }
 
+
+  factory NodeModel.fromJson(Map<String, dynamic> json) => NodeModel(
+    id: json['id'] as int,
+    x: (json['x'] as num).toDouble(),
+    y: (json['y'] as num?)?.toDouble() ?? 0.0,
+    loadX: (json['loadX'] as num?)?.toDouble() ?? 0.0,
+    loadY: (json['loadY'] as num?)?.toDouble() ?? 0.0,
+    fixX: json['fixX'] ?? false,
+    fixY: json['fixY'] ?? false,
+  );
+
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'x': x,
+    'y': y,
+    'loadX': loadX,
+    'loadY': loadY
+  
+  };
+
+
   @override
-  List<Object?> get props => [id, x, y, loadX, loadY, fixX, fixY, fixZ];
+  List<Object?> get props => [id, x, y, loadX, loadY];
 }
-
-
-
-
-
-  // Map<String, dynamic> toJson() => {
-  //       'id': id,
-  //       'x': x,
-  //       'y': y,
-  //       'LoadX': LoadX,
-  //       'LoadY': LoadY,
-  //       'fixX': fixX,
-  //       'fixY': fixY,
-  //       'fixRotation': fixRotation,
-  //     };
-      
-  // factory Node.fromJson(Map<String, dynamic> j) => Node(
-  //       id: j['id'],
-  //       x: (j['x'] as num).toDouble(),
-  //       y: (j['y'] as num).toDouble(),
-  //       support: j['support'] != null
-  //           ? SupportModel.fromJson(Map<String, dynamic>.from(j['support']))
-  //           : const SupportModel(),
-  //       pointLoad: j['pointLoad'] != null
-  //           ? PointLoadModel.fromJson(Map<String, dynamic>.from(j['pointLoad']))
-  //           : null,
-  //     );
-
-  // double distanceTo(Node other) =>
-  //     math.sqrt(math.pow(x - other.x, 2) + math.pow(y - other.y, 2));

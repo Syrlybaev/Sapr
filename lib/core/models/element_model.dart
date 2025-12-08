@@ -1,42 +1,47 @@
 import 'package:equatable/equatable.dart';
 
-import 'package:uuid/uuid.dart';
-
 /// Стержень (элемент конструкции)
-class Element extends Equatable {
-  final String id;
-  final String nodeStartId;
-  final String nodeEndId;
-  final double q; // [Н/м]
-  final double allowableStress; // допускаемое напряжение
+class ElementModel extends Equatable {
+  final int id; // ID стержня
+  final int nodeStartId; // ID узла начала
+  final int nodeEndId; // ID узла конца
+  final double qy; // [Н/м] поперечная погонная нагрузка (вдоль оси y)
+  final double qx; // [Н/м] продольная погонная нагрузка (вдоль оси x)
   final double E; // модуль упругости
   final double A; // площадь сечения
+  final double allowableStress; // допускаемое напряжение
 
-  Element({
-    String? id,
+  const ElementModel({
+    required this.id,
     required this.nodeStartId,
     required this.nodeEndId,
     double? q,
+    double? qx,
     double? E,
     double? A,
     double? allowableStress,
-  }) : id = id ?? Uuid().v4(),
-       q = q ?? 0.0,
+  }) : qy = q ?? 0.0,
+       qx = qx ?? 0.0,
        E = E ?? 0.0,
        A = A ?? 0.0,
        allowableStress = allowableStress ?? 0.0;
 
-  Element copyWith({
-    String? nodeStartId,
-    String? nodeEndId,
+  ElementModel copyWith({
+    int? id,
+    int? nodeStartId,
+    int? nodeEndId,
+    double? q,
+    double? qx,
     double? E,
     double? A,
     double? allowableStress,
   }) {
-    return Element(
-      id: id,
+    return ElementModel(
+      id: id ?? this.id,
       nodeStartId: nodeStartId ?? this.nodeStartId,
       nodeEndId: nodeEndId ?? this.nodeEndId,
+      q: q ?? this.qy,
+      qx: qx ?? this.qx,
       E: E ?? this.E,
       A: A ?? this.A,
       allowableStress: allowableStress ?? this.allowableStress,
@@ -48,11 +53,32 @@ class Element extends Equatable {
     id,
     nodeStartId,
     nodeEndId,
+    qy,
+    qx,
     E,
     A,
     allowableStress,
   ];
+
+  factory ElementModel.fromJson(Map<String, dynamic> json) => ElementModel(
+    id: json['id'] as int,
+    nodeStartId: json['nodeStartId'] as int,
+    nodeEndId: json['nodeEndId'] as int,
+    q: (json['q'] as num?)?.toDouble() ?? 0.0,
+    qx: (json['qx'] as num?)?.toDouble() ?? 0.0,
+    E: (json['E'] as num?)?.toDouble() ?? 0.0,
+    A: (json['A'] as num?)?.toDouble() ?? 0.0,
+    allowableStress: (json['allowableStress'] as num?)?.toDouble() ?? 0.0,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'nodeStartId': nodeStartId,
+    'nodeEndId': nodeEndId,
+    'q': qy,
+    'qx': qx,
+    'E': E,
+    'A': A,
+    'allowableStress': allowableStress,
+  };
 }
-
-
- 
