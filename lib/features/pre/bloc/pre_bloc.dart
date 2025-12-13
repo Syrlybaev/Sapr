@@ -46,26 +46,26 @@ class PreBloc extends Bloc<PreEvent, PreState> {
     }
   }
 
-  /// Сохранение проекта (узлов и/или элементов)
+  //  Сохранение проекта (узлов и/или элементов)
   Future<void> _onSave(PreSaveEvent event, Emitter<PreState> emit) async {
-    final currentState = state;
-    if (currentState is! PreLoadedState) {
+    final curState = state;
+    if (curState is! PreLoadedState) {
       emit(PreFailureState(message: 'Проект не загружен'));
       return;
     }
+    final curProject = curState.project;
 
     try {
-      final newNodes =
-          event.nodes.isNotEmpty ? event.nodes : currentState.project.nodes;
+      final newNodes = event.nodes.isNotEmpty ? event.nodes : curProject.nodes;
       final newElements =
-          event.elements.isNotEmpty
-              ? event.elements
-              : currentState.project.elements;
+          event.elements.isNotEmpty ? event.elements : curProject.elements;
 
       final ProjectModel project = ProjectModel(
-        name: currentState.project.name,
+        name: curProject.name,
         nodes: newNodes,
         elements: newElements,
+        fixLeft: curProject.fixLeft,
+        fixRight: curProject.fixRight,
       );
 
       // Эмитим ПЕРЕД сохранением в репозиторий
@@ -134,6 +134,8 @@ class PreBloc extends Bloc<PreEvent, PreState> {
             id: newElemId,
             nodeStartId: newNodes[newNodes.length - 2].id,
             nodeEndId: newNodes[newNodes.length - 1].id,
+            E: 1,
+            A: 1,
           ),
         );
       }

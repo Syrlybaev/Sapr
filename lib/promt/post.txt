@@ -1,0 +1,381 @@
+ТЗ:
+1. Требования к конструкции
+Конструкция должна представлять собой плоскую стержневую систему, составленную из
+прямолинейных стержней, последовательно соединённых друг с другом вдоль общей оси.
+Каждый стержень i характеризуется длиной Li
+, площадью поперечного сечения Ai
+. Материал
+стержней должен характеризоваться модулем упругости Ei
+, допускаемым напряжением [ ] σ i
+.
+2. Требования к нагрузкам
+На любое сечение конструкции могут быть наложены нулевые кинематические граничные
+условия (жёсткие опоры), запрещающие перемещения и повороты этих сечений во всех направлениях.
+Конструкция может быть нагружена в глобальных узлах j статическими сосредоточенными
+продольными усилиями Fj
+.
+Каждый стержень конструкции может быть нагружен постоянной вдоль его оси статической
+погонной нагрузкой qi
+.
+3. Требования к задачам
+Система должна обеспечивать решение линейной задачи статики для плоских стержневых
+конструкций.
+4. Общесистемные требования
+Особые требования к операционной системе не предъявляются. В случае реализации системы для
+работы под управлением операционной системы Microsoft Windows необходимо подготовить
+независимый исполняемый файл. При сдаче проекта необходимо будет записать видео,
+демонстрирующее работу разработанной системы.
+5. Требования к системе
+5.1. Требования к препроцессору (срок подготовки – к лабораторной работе № 3)
+Препроцессор системы должен обеспечивать:
+- ввод массивов данных, описывающих конструкцию и внешние воздействия;
+- формальную диагностику данных, описывающих конструкцию и внешние воздействия;
+- визуализацию конструкции и нагрузок;
+- формирование файла проекта.
+5.2. Требования к процессору (срок подготовки – к лабораторной работе № 4)
+Процессор системы должен обеспечивать расчёт вектора перемещений ∆ глобальных узлов
+конструкции.
+5.3. Требования к постпроцессору (срок подготовки – к лабораторной работе № 5)
+Постпроцессор системы должен обеспечивать:
+- расчёт компонент напряжённо-деформированного состояния конструкции (продольные силы
+Nx
+, нормальные напряжения σx
+, перемещения ux
+) по вектору перемещений ∆.
+- анализ результатов расчёта;
+- отображение результатов расчёта в табличном виде;
+- возможность получения всех компонент напряжённо-деформированного состояния в
+конкретном сечении конструкции;
+- отображение результатов расчёта в виде графиков, на оси ординат которых отложены
+компоненты напряжённо-деформированного состояния конструкции, а на оси абсцисс –
+локальные координаты стержней;
+- отображение результатов расчёта на конструкции в виде эпюр компонент напряжённодеформированного состояния;
+- формирование файла результатов расчёта (отчёта по решению задачи)
+
+
+
+Что уже сделано:
+Сделан предпроцессор - ввод узлов и стержней, сохранение данных и их чтение из файла. 
+Сделан процессор, скорее всего сделано больше чем нужно и эти данные понадобятся для построцессора.
+
+Что нужно сделать:
+Сейчас нужно сделать постпроцессор. Если честно я сам не особо понимаю, как будет проходить рассчет и что там вообще нужно делать. 
+Смотри, вообще есть такая возможность, что даже случайно сделал вообще все рассчеты для постпроцессора и там уже делать ничего 
+не осталось, либо осталось чуть чуть и только визуализировать все. Кароче посмотри, что осталось и сделай недостоющую часть 
+
+
+git другого человека, там могуть быть рассчеты на другом языке программирование, можно интерпритировать решения от туда. А можешь и не брать, потому что и так очень много кода:
+https://github.com/Duletun/doliSAPR
+
+
+Вот весь код:
+Так же я скину тебе zip. Посмотри сам что нужно, сделай выводы что осталось сделать для построцессора и сделай. 
+
+
+репозиторий для чтения и записи все в файлы:
+// ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'dart:convert';
+import 'dart:io';
+import 'package:saprbar_desktop/core/models/project_model.dart';
+
+/// Репозиторий для работы с проектами (узлы + стержни)
+class ProjectRepository {
+  final Directory projectsDir;
+  ProjectModel? _currentProject;
+
+  ProjectRepository({required this.projectsDir});
+
+  /// Создать новый проект
+  Future<void> createProject({required String name}) async {
+    _currentProject = null;
+    final filePath = '${projectsDir.path}/$name.json';
+    final file = File(filePath);
+
+    if (await file.exists()) {
+      throw Exception('Проект с именем "$name" уже существует.');
+    }
+
+    final project = ProjectModel(name: name, nodes: [], elements: []);
+    await file.writeAsString(jsonEncode(project.toJson()));
+    _currentProject = project;
+  }
+
+  /// Загрузить проект по имени
+  Future<ProjectModel?> loadProject({required String name}) async {
+    _currentProject = null;
+    final file = File('${projectsDir.path}/$name.json');
+    if (!await file.exists()) throw Exception('Такой проект не найден');
+
+    final content = await file.readAsString();
+    final data = jsonDecode(content);
+    _currentProject = ProjectModel.fromJson(data);
+    return _currentProject;
+  }
+
+  Future<void> updateProject(ProjectModel project) async {
+    _currentProject = project;
+    await _saveCurrentProject();
+  }
+
+  /// Сохранить текущий проект
+  Future<void> _saveCurrentProject() async {
+    if (_currentProject == null) {
+      throw Exception('Сохранять нечего, проекта нету');
+    }
+    final file = File('${projectsDir.path}/${_currentProject!.name}.json');
+    await file.writeAsString(jsonEncode(_currentProject!.toJson()));
+  }
+
+  // Удалить последний узел
+  void deleteNode() {
+    _currentProject!.deleteLastNode();
+  }
+
+  /// Получить текущий проект
+  ProjectModel? get currentProject => _currentProject;
+}
+
+
+
+Модельки:
+import 'package:equatable/equatable.dart';
+import 'package:saprbar_desktop/core/models/element_model.dart';
+import 'package:saprbar_desktop/core/models/node_model.dart';
+
+class ProjectModel extends Equatable {
+  final String name;
+  final List<NodeModel> nodes;
+  final List<ElementModel> elements;
+  final bool fixLeft;
+  final bool fixRight;
+
+  const ProjectModel({
+    required this.name,
+    required this.nodes,
+    required this.elements,
+    this.fixLeft = false,
+    this.fixRight = false,
+  });
+
+  /// Удалить последний узел и связанные стержни
+  /// Возвращает новый ProjectModel (не мутирует текущий)
+  ProjectModel deleteLastNode() {
+    if (nodes.isEmpty) return this;
+
+    final List<NodeModel> newNodes = List.from(nodes)..removeLast();
+    final int deletedNodeId = nodes.last.id;
+
+    // Удаляем стержни, связанные с удалённым узлом
+    final List<ElementModel> newElements =
+        elements
+            .where(
+              (e) =>
+                  e.nodeStartId != deletedNodeId &&
+                  e.nodeEndId != deletedNodeId,
+            )
+            .toList();
+
+    return copyWith(nodes: newNodes, elements: newElements);
+  }
+
+  factory ProjectModel.fromJson(Map<String, dynamic> json) {
+    return ProjectModel(
+      name: json['name'] as String,
+      nodes: (json['nodes'] as List).map((e) => NodeModel.fromJson(e)).toList(),
+      elements:
+          (json['elements'] as List)
+              .map((e) => ElementModel.fromJson(e))
+              .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'nodes': nodes.map((e) => e.toJson()).toList(),
+    'elements': elements.map((e) => e.toJson()).toList(),
+  };
+
+  ProjectModel copyWith({
+    String? name,
+    List<NodeModel>? nodes,
+    List<ElementModel>? elements,
+    bool? fixLeft,
+    bool? fixRight,
+  }) {
+    return ProjectModel(
+      name: name ?? this.name,
+      nodes: nodes ?? this.nodes,
+      elements: elements ?? this.elements,
+      fixLeft: fixLeft ?? this.fixLeft,
+      fixRight: fixRight ?? this.fixRight,
+    );
+  }
+
+  @override
+  List<Object?> get props => [name, nodes, elements, fixLeft, fixRight];
+}
+
+
+
+import 'package:equatable/equatable.dart';
+
+/// Узел конструкции
+class NodeModel extends Equatable {
+  final int id;
+  final double x; // координата x
+  final double y = 0.0; // координата y
+  final double loadX; // [Н] сосредоточенная продольная сила (вдоль оси x)
+  final double loadY; // [Н] сосредоточенная поперечная сила (вдоль оси y)
+
+  const NodeModel({
+    required this.id,
+    required this.x,
+
+    double? loadX,
+    double? loadY,
+    bool? fixX,
+    bool? fixY,
+  }) : loadX = loadX ?? 0.0,
+       loadY = loadY ?? 0.0;
+
+  NodeModel copyWith({
+    int? id,
+    double? x,
+    double? y,
+    double? loadX,
+    double? loadY,
+    bool? fixX,
+    bool? fixY,
+  }) {
+    return NodeModel(
+      id: id ?? this.id,
+      x: x ?? this.x,
+      loadX: loadX ?? this.loadX,
+      loadY: loadY ?? this.loadY,
+    );
+  }
+
+  factory NodeModel.fromJson(Map<String, dynamic> json) => NodeModel(
+    id: json['id'] as int,
+    x: (json['x'] as num).toDouble(),
+
+    loadX: (json['loadX'] as num?)?.toDouble() ?? 0.0,
+    loadY: (json['loadY'] as num?)?.toDouble() ?? 0.0,
+    fixX: json['fixX'] ?? false,
+    fixY: json['fixY'] ?? false,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'x': x,
+    'y': y,
+    'loadX': loadX,
+    'loadY': loadY,
+  };
+
+  @override
+  List<Object?> get props => [id, x, loadX, loadY];
+}
+import 'package:equatable/equatable.dart';
+
+/// Стержень (элемент конструкции)
+class ElementModel extends Equatable {
+  final int id; // ID стержня
+  final int nodeStartId; // ID узла начала
+  final int nodeEndId; // ID узла конца
+  final double qy; // [Н/м] поперечная погонная нагрузка (вдоль оси y)
+  final double qx; // [Н/м] продольная погонная нагрузка (вдоль оси x)
+  final double E; // модуль упругости
+  final double A; // площадь сечения
+  final double allowableStress; // допускаемое напряжение
+
+  const ElementModel({
+    required this.id,
+    required this.nodeStartId,
+    required this.nodeEndId,
+    double? q,
+    double? qx,
+    double? E,
+    double? A,
+    double? allowableStress,
+  }) : qy = q ?? 0.0,
+       qx = qx ?? 0.0,
+       E = E ?? 0.0,
+       A = A ?? 0.0,
+       allowableStress = allowableStress ?? 0.0;
+
+  ElementModel copyWith({
+    int? id,
+    int? nodeStartId,
+    int? nodeEndId,
+    double? q,
+    double? qx,
+    double? E,
+    double? A,
+    double? allowableStress,
+  }) {
+    return ElementModel(
+      id: id ?? this.id,
+      nodeStartId: nodeStartId ?? this.nodeStartId,
+      nodeEndId: nodeEndId ?? this.nodeEndId,
+      q: q ?? this.qy,
+      qx: qx ?? this.qx,
+      E: E ?? this.E,
+      A: A ?? this.A,
+      allowableStress: allowableStress ?? this.allowableStress,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    id,
+    nodeStartId,
+    nodeEndId,
+    qy,
+    qx,
+    E,
+    A,
+    allowableStress,
+  ];
+
+  factory ElementModel.fromJson(Map<String, dynamic> json) => ElementModel(
+    id: json['id'] as int,
+    nodeStartId: json['nodeStartId'] as int,
+    nodeEndId: json['nodeEndId'] as int,
+    q: (json['q'] as num?)?.toDouble() ?? 0.0,
+    qx: (json['qx'] as num?)?.toDouble() ?? 0.0,
+    E: (json['E'] as num?)?.toDouble() ?? 0.0,
+    A: (json['A'] as num?)?.toDouble() ?? 0.0,
+    allowableStress: (json['allowableStress'] as num?)?.toDouble() ?? 0.0,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'nodeStartId': nodeStartId,
+    'nodeEndId': nodeEndId,
+    'q': qy,
+    'qx': qx,
+    'E': E,
+    'A': A,
+    'allowableStress': allowableStress,
+  };
+}
+
+
+единственное, что есть у preProcessora -это заглушка:
+import 'package:flutter/material.dart';
+
+class PostprocessorPanel extends StatelessWidget {
+  const PostprocessorPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: MediaQuery.of(context).size.width * 0.3,
+      color: Colors.grey.shade800,
+      child: const Center(
+        child: Text('Postprocessor Panel (результаты и эпюры)', style: TextStyle(color: Colors.white)),
+      ),
+    );
+  }
+}

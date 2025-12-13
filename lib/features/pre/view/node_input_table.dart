@@ -136,15 +136,15 @@ class _NodeInputTableState extends State<NodeInputTable> {
       label: _buildHeader('ID'),
       width: 40,
     ),
-    GridColumn(columnName: 'x', label: _buildHeader('X'), width: 40),
-    GridColumn(
-      columnName: 'y',
-      allowEditing: false,
-      label: _buildHeader('Y'),
-      width: 40,
-    ),
+    GridColumn(columnName: 'x', label: _buildHeader('X')),
+    // GridColumn(
+    //   columnName: 'y',
+    //   allowEditing: false,
+    //   label: _buildHeader('Y'),
+    //   width: 40,
+    // ),
     GridColumn(columnName: 'loadX', label: _buildHeader('Fx')),
-    GridColumn(columnName: 'loadY', label: _buildHeader('Fy')),
+    // GridColumn(columnName: 'loadY', label: _buildHeader('Fy')),
   ];
 
   Widget _buildHeader(String text) {

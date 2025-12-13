@@ -12,6 +12,7 @@ class ProjectRepository {
 
   /// Создать новый проект
   Future<void> createProject({required String name}) async {
+    _currentProject = null;
     final filePath = '${projectsDir.path}/$name.json';
     final file = File(filePath);
 
@@ -20,12 +21,13 @@ class ProjectRepository {
     }
 
     final project = ProjectModel(name: name, nodes: [], elements: []);
-    await file.writeAsString(jsonEncode(project.toJson()));
+    await file.writeAsString(jsonEncode(project.toJson));
     _currentProject = project;
   }
 
   /// Загрузить проект по имени
   Future<ProjectModel?> loadProject({required String name}) async {
+    _currentProject = null;
     final file = File('${projectsDir.path}/$name.json');
     if (!await file.exists()) throw Exception('Такой проект не найден');
 
@@ -46,7 +48,7 @@ class ProjectRepository {
       throw Exception('Сохранять нечего, проекта нету');
     }
     final file = File('${projectsDir.path}/${_currentProject!.name}.json');
-    await file.writeAsString(jsonEncode(_currentProject!.toJson()));
+    await file.writeAsString(jsonEncode(_currentProject!.toJson));
   }
 
   // Удалить последний узел

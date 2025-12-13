@@ -3,9 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:saprbar_desktop/features/home/bloc/file_bloc.dart';
 import 'package:saprbar_desktop/features/pre/bloc/pre_bloc.dart';
 
-class TopBar extends StatelessWidget {
+class TopBar extends StatefulWidget {
   const TopBar({super.key});
 
+  @override
+  State<TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends State<TopBar> {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -53,6 +58,14 @@ class TopBar extends StatelessWidget {
                   style: const TextStyle(color: Colors.white70),
                 );
               }
+              if (state is FileFailureState) {
+                context.read<PreBloc>().add(PreLoadEvent());
+                return Text(
+                  state.message,
+                  style: const TextStyle(color: Colors.white70),
+                );
+              }
+
               return const SizedBox.shrink();
             },
           ),
@@ -127,11 +140,12 @@ class TopBar extends StatelessWidget {
 
                   // Потом загружаем через PreBloc
                   // Future.delayed гарантирует что FileBloc завершит первым
-                  Future.delayed(const Duration(milliseconds: 50), () {
+                  Future.delayed(const Duration(milliseconds: 100), () {
                     context.read<PreBloc>().add(PreLoadEvent());
                   });
 
                   Navigator.pop(context);
+                  setState(() {});
                 },
               ),
             ],

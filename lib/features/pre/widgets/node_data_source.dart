@@ -31,9 +31,9 @@ class NodeDataSource extends DataGridSource {
               cells: [
                 DataGridCell<int>(columnName: 'id', value: node.id),
                 DataGridCell<double>(columnName: 'x', value: node.x),
-                DataGridCell<double>(columnName: 'y', value: node.y),
+                // DataGridCell<double>(columnName: 'y', value: node.y),
                 DataGridCell<double>(columnName: 'loadX', value: node.loadX),
-                DataGridCell<double>(columnName: 'loadY', value: node.loadY),
+                // DataGridCell<double>(columnName: 'loadY', value: node.loadY),
               ],
             );
           }).toList();
@@ -144,7 +144,7 @@ class NodeDataSource extends DataGridSource {
 
     if (col == 'x') {
       if (parsed < 0) {
-        _showError('Координата X не может быть отрицательной');
+        _showError(' дината X не может быть отрицательной');
         return false;
       }
 
@@ -155,25 +155,25 @@ class NodeDataSource extends DataGridSource {
 
       if (currentIndex == -1) return false;
 
-      if (currentIndex > 0) {
-        final double prevX = _nodes[currentIndex - 1].x;
-        if (parsed < prevX) {
-          _showError(
-            'Координата X должна быть >= предыдущего узла (${prevX.toStringAsFixed(2)})',
-          );
-          return false;
-        }
-      }
+      // if (currentIndex > 0) {
+      //   final double prevX = _nodes[currentIndex - 1].x;
+      //   if (parsed < prevX) {
+      //     _showError(
+      //       'Координата X должна быть >= предыдущего узла (${prevX.toStringAsFixed(2)})',
+      //     );
+      //     return false;
+      //   }
+      // }
 
-      if (currentIndex < _nodes.length - 1) {
-        final double nextX = _nodes[currentIndex + 1].x;
-        if (parsed > nextX) {
-          _showError(
-            'Координата X должна быть <= следующего узла (${nextX.toStringAsFixed(2)})',
-          );
-          return false;
-        }
-      }
+      // if (currentIndex < _nodes.length - 1) {
+      //   final double nextX = _nodes[currentIndex + 1].x;
+      //   if (parsed > nextX) {
+      //     _showError(
+      //       'Координата X должна быть <= следующего узла (${nextX.toStringAsFixed(2)})',
+      //     );
+      //     return false;
+      //   }
+      // }
     }
 
     return true;
@@ -206,12 +206,13 @@ class NodeDataSource extends DataGridSource {
       case 'loadX':
         node = node.copyWith(loadX: parsed);
         break;
-      case 'loadY':
-        node = node.copyWith(loadY: parsed);
-        break;
+      // case 'loadY':
+      //   node = node.copyWith(loadY: parsed);
+      //   break;
     }
 
     _nodes[modelIndex] = node;
+    _nodes.sort((a, b) => a.x.compareTo(b.x));
     _buildRows();
     notifyListeners();
 

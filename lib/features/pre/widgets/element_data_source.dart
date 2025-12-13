@@ -45,18 +45,18 @@ class ElementDataSource extends DataGridSource {
             return DataGridRow(
               cells: [
                 DataGridCell<int>(columnName: 'id', value: element.id),
-                DataGridCell<int>(
-                  columnName: 'nodeStartId',
-                  value: element.nodeStartId,
-                ),
-                DataGridCell<int>(
-                  columnName: 'nodeEndId',
-                  value: element.nodeEndId,
-                ),
+                // DataGridCell<int>(
+                //   columnName: 'nodeStartId',
+                //   value: element.nodeStartId,
+                // ),
+                // DataGridCell<int>(
+                //   columnName: 'nodeEndId',
+                //   value: element.nodeEndId,
+                // ),
                 DataGridCell<double>(columnName: 'length', value: length),
                 DataGridCell<double>(columnName: 'E', value: element.E),
                 DataGridCell<double>(columnName: 'A', value: element.A),
-                DataGridCell<double>(columnName: 'q', value: element.qy),
+                // DataGridCell<double>(columnName: 'q', value: element.qy),
                 DataGridCell<double>(columnName: 'qx', value: element.qx),
                 DataGridCell<double>(
                   columnName: 'allowableStress',
@@ -110,7 +110,8 @@ class ElementDataSource extends DataGridSource {
         col == 'A' ||
         col == 'q' ||
         col == 'qx' ||
-        col == 'allowableStress';
+        col == 'allowableStress' ||
+        col == "length";
   }
 
   @override
@@ -189,6 +190,10 @@ class ElementDataSource extends DataGridSource {
       _showError('Площадь сечения A должна быть > 0');
       return false;
     }
+    if (col == 'length' && parsed < 0) {
+      _showError('Длина не может быть отрицательной');
+      return false;
+    }
 
     // q может быть отрицательным (противоположное направление поперечной нагрузки)
     // Значение 0 допускается (нагрузка отсутствует)
@@ -225,6 +230,7 @@ class ElementDataSource extends DataGridSource {
 
     ElementModel element = _elements[modelIndex];
 
+    List<NodeModel>? newNodes;
     switch (col) {
       case 'E':
         element = element.copyWith(E: parsed);
@@ -241,13 +247,43 @@ class ElementDataSource extends DataGridSource {
       case 'allowableStress':
         element = element.copyWith(allowableStress: parsed);
         break;
+      case 'length':
+        // Создаём отдельную копию списка узлов
+        newNodes = List<NodeModel>.from(_nodes);
+
+        // Определяем стартовый и конечный узлы элемента
+        final startNode = newNodes.firstWhere(
+          (n) => n.id == element.nodeStartId,
+        );
+        final endNode = newNodes.firstWhere((n) => n.id == element.nodeEndId);
+
+        final startIdx = newNodes.indexOf(startNode);
+        final endIdx = newNodes.indexOf(endNode);
+
+        if (startIdx == -1 || endIdx == -1) {
+          _showError('Не удалось найти узлы стержня');
+          break;
+        }
+
+        // Ставим новый X для конечного узла: X(start) + новая длина
+        newNodes[endIdx] = newNodes[endIdx].copyWith(
+          x: newNodes[startIdx].x + parsed,
+        );
+
+        // Сдвигаем все последующие узлы, сохраняя их старые относительные длины
+        for (int i = endIdx + 1; i < newNodes.length; i++) {
+          final oldSegmentLength = _nodes[i].x - _nodes[i - 1].x;
+          final newX = newNodes[i - 1].x + oldSegmentLength;
+          newNodes[i] = newNodes[i].copyWith(x: newX);
+        }
+        break;
     }
 
     _elements[modelIndex] = element;
     _buildRows();
     notifyListeners();
 
-    preBloc.add(PreSaveEvent(elements: _elements));
+    preBloc.add(PreSaveEvent(elements: _elements, nodes: newNodes));
 
     _currentEditValue = '';
   }
@@ -262,14 +298,14 @@ class ElementDataSource extends DataGridSource {
     );
   }
 
-  void updateData(List<ElementModel> newElements, List<NodeModel> newNodes) {
-    _elements.clear();
-    _elements.addAll(newElements);
-    _nodes.clear();
-    _nodes.addAll(newNodes);
-    _buildRows();
-    notifyListeners();
-  }
+  // void updateData(List<ElementModel> newElements, List<NodeModel> newNodes) {
+  //   _elements.clear();
+  //   _elements.addAll(newElements);
+  //   _nodes.clear();
+  //   _nodes.addAll(newNodes);
+  //   _buildRows();
+  //   notifyListeners();
+  // }
 
   @override
   void dispose() {
