@@ -7,15 +7,17 @@ class DiagramPoint extends Equatable {
   final double x; // Глобальная координата
   final double value; // Значение (Nx, σ, Δ, ε)
   final int elementId; // ID стержня для отслеживания
+  final bool isNode; // ✅ НОВОЕ: Является ли точка узловой
 
   const DiagramPoint({
     required this.x,
     required this.value,
     required this.elementId,
+    this.isNode = false, // По умолчанию не узловая
   });
 
   @override
-  List<Object?> get props => [x, value, elementId];
+  List get props => [x, value, elementId, isNode];
 }
 
 /// Модель эпюры для одного типа компоненты
@@ -37,7 +39,7 @@ class DiagramModel extends Equatable {
   });
 
   @override
-  List<Object?> get props =>
+  List get props =>
       [name, unit, points, maxValue, minValue, averageValue];
 
   /// Получить точку диаграммы по стержню
@@ -47,6 +49,11 @@ class DiagramModel extends Equatable {
     } catch (e) {
       return null;
     }
+  }
+
+  /// ✅ НОВОЕ: Получить только узловые точки
+  List<DiagramPoint> getNodePoints() {
+    return points.where((p) => p.isNode).toList();
   }
 }
 
@@ -65,6 +72,6 @@ class AllDiagrams extends Equatable {
   });
 
   @override
-  List<Object?> get props =>
+  List get props =>
       [internalForces, stresses, displacements, strains];
 }

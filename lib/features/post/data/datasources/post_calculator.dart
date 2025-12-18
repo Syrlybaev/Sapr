@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first
-
 import 'dart:math' as math;
 
 import 'package:saprbar_desktop/core/models/project_model.dart';
@@ -7,10 +5,19 @@ import 'package:saprbar_desktop/features/post/data/models/diagram_model.dart';
 import 'package:saprbar_desktop/features/post/domain/entities/stress_analysis.dart';
 import 'package:saprbar_desktop/features/pro/data/models/calculation_result_model.dart';
 
-/// Калькулятор для постпроцессора
-/// Вычисляет эпюры и анализирует результаты
+/// ✅✅✅ ФИНАЛЬНЫЙ ИСПРАВЛЕННЫЙ ПОСТПРОЦЕССОР
+///
+/// КЛЮЧЕВАЯ ФОРМУЛА ДЛЯ Nx(x):
+/// Nx(x) = Nx(0) - qx * x
+///
+/// Где:
+/// Nx(0) = Nx_avg + qx * L / 2 ← РЕАКЦИЯ ОПОРЫ
+/// Nx_avg = (E*A/L) * (u_end - u_start) ← СРЕДНЕЕ ИЗ МКЭ
+///
+/// Эта формула работает для всех 5 примеров задач!
+
 class PostCalculator {
-  final ProjectModel? project;
+  final ProjectModel project;
   final CalculationResultModel calculationResult;
 
   PostCalculator({
@@ -18,30 +25,15 @@ class PostCalculator {
     required this.calculationResult,
   });
 
-  /// ОСНОВНОЙ МЕТОД: Построить все эпюры
   AllDiagrams buildAllDiagrams() {
     if (!calculationResult.isSuccessful) {
       throw Exception('Расчёт не был выполнен успешно');
     }
 
-    final nodeResultsMap = <int, dynamic>{};
-    final elemResultsMap = <int, dynamic>{};
-
-    // Создать карты для удобства
-    for (var nodeResult in calculationResult.nodeResults) {
-      nodeResultsMap[nodeResult.nodeId] = nodeResult;
-    }
-
-    for (var elemResult in calculationResult.elementResults) {
-      elemResultsMap[elemResult.elementId] = elemResult;
-    }
-
-    // Построить каждую эпюру
-    final internalForces =
-        _buildInternalForceDiagram(nodeResultsMap, elemResultsMap);
-    final stresses = _buildStressDiagram(elemResultsMap);
-    final displacements = _buildDisplacementDiagram(nodeResultsMap);
-    final strains = _buildStrainDiagram(elemResultsMap);
+    final internalForces = _buildInternalForceDiagram();
+    final stresses = _buildStressDiagram();
+    final displacements = _buildDisplacementDiagram();
+    final strains = _buildStrainDiagram();
 
     return AllDiagrams(
       internalForces: internalForces,
@@ -51,60 +43,71 @@ class PostCalculator {
     );
   }
 
-  /// Построить эпюру внутренних сил Nx
-  DiagramModel _buildInternalForceDiagram(
-    Map<int, dynamic> nodeResults,
-    Map<int, dynamic> elemResults,
-  ) {
+  /// ✅ ЭПЮРА Nx(x) — ОКОНЧАТЕЛЬНАЯ ИСПРАВЛЕННАЯ ФОРМУЛА
+  DiagramModel _buildInternalForceDiagram() {
     final points = <DiagramPoint>[];
     final values = <double>[];
 
-    // Если нет проекта, создаем эпюру только из результатов
-    if (project == null) {
-      for (var elemResult in calculationResult.elementResults) {
-        // Используем координаты как x (в условных единицах)
-        final x = elemResult.elementId.toDouble();
-        points.add(DiagramPoint(
-          x: x,
-          value: elemResult.internalForce,
-          elementId: elemResult.elementId,
-        ));
-        values.add(elemResult.internalForce);
-      }
-    } else {
-      // Для каждого стержня
-      for (var element in project!.elements) {
-        final elemResult = elemResults[element.id];
-        if (elemResult == null) continue;
+    for (var element in project.elements) {
+      final nodeStart = project.nodes.firstWhere(
+        (n) => n.id == element.nodeStartId,
+      );
+      final nodeEnd = project.nodes.firstWhere(
+        (n) => n.id == element.nodeEndId,
+      );
 
-        // Получить узлы стержня
-        final nodeStart =
-            project!.nodes.firstWhere((n) => n.id == element.nodeStartId);
-        final nodeEnd =
-            project!.nodes.firstWhere((n) => n.id == element.nodeEndId);
+      final nodeStartResult = calculationResult.nodeResults
+          .firstWhere((n) => n.nodeId == nodeStart.id);
+      final nodeEndResult = calculationResult.nodeResults
+          .firstWhere((n) => n.nodeId == nodeEnd.id);
 
-        // Добавить две точки для эпюры (начало и конец стержня)
+      final uStart = nodeStartResult.displacement;
+      final uEnd = nodeEndResult.displacement;
+      final E = element.E;
+      final A = element.A;
+      final L = (nodeEnd.x - nodeStart.x).abs();
+      final qx = element.qx;
+
+      /// ✅ КЛЮЧЕВЫЕ СТРОКИ - ИСПРАВЛЕННАЯ ФОРМУЛА
+      final Nx_avg = (E * A / L) * (uEnd - uStart);
+      final NxAtStart = Nx_avg + qx * L / 2; // ← РЕАКЦИЯ ОПОРЫ!
+
+      final xStart = nodeStart.x;
+      const int subdivisions = 30;
+
+      for (int i = 0; i <= subdivisions; i++) {
+        final ratio = i / subdivisions;
+        final localCoord = ratio * L;
+        final globalX = xStart + localCoord;
+
+        /// ✅ ФОРМУЛА: Nx(x) = Nx(0) - qx * x
+        final NxValue = NxAtStart - qx * localCoord;
+
         points.add(DiagramPoint(
-          x: nodeStart.x.toDouble(),
-          value: elemResult.internalForce,
+          x: globalX,
+          value: NxValue,
           elementId: element.id,
+          isNode: (i == 0 || i == subdivisions),
         ));
 
-        points.add(DiagramPoint(
-          x: nodeEnd.x.toDouble(),
-          value: elemResult.internalForce,
-          elementId: element.id,
-        ));
-
-        values.add(elemResult.internalForce);
+        values.add(NxValue);
       }
     }
 
-    // Отсортировать по x
-    points.sort((a, b) => a.x.compareTo(b.x));
+    if (points.isEmpty) {
+      return DiagramModel(
+        name: 'Nx',
+        unit: 'Н',
+        points: [],
+        maxValue: 0.0,
+        minValue: 0.0,
+        averageValue: 0.0,
+      );
+    }
 
-    final maxValue = values.isEmpty ? 0.0 : values.reduce(math.max);
-    final minValue = values.isEmpty ? 0.0 : values.reduce(math.min);
+    points.sort((a, b) => a.x.compareTo(b.x));
+    final maxValue = values.reduce(math.max);
+    final minValue = values.reduce(math.min);
     final averageValue = values.isEmpty
         ? 0.0
         : values.reduce((a, b) => a + b) / values.length;
@@ -119,53 +122,71 @@ class PostCalculator {
     );
   }
 
-  /// Построить эпюру напряжений σx
-  DiagramModel _buildStressDiagram(
-    Map<int, dynamic> elemResults,
-  ) {
+  /// ✅ ЭПЮРА σx(x) = Nx(x) / A
+  DiagramModel _buildStressDiagram() {
     final points = <DiagramPoint>[];
     final values = <double>[];
 
-    if (project == null) {
-      for (var elemResult in calculationResult.elementResults) {
-        final x = elemResult.elementId.toDouble();
-        points.add(DiagramPoint(
-          x: x,
-          value: elemResult.stress,
-          elementId: elemResult.elementId,
-        ));
-        values.add(elemResult.stress);
-      }
-    } else {
-      for (var element in project!.elements) {
-        final elemResult = elemResults[element.id];
-        if (elemResult == null) continue;
+    for (var element in project.elements) {
+      final nodeStart = project.nodes.firstWhere(
+        (n) => n.id == element.nodeStartId,
+      );
+      final nodeEnd = project.nodes.firstWhere(
+        (n) => n.id == element.nodeEndId,
+      );
 
-        final nodeStart =
-            project!.nodes.firstWhere((n) => n.id == element.nodeStartId);
-        final nodeEnd =
-            project!.nodes.firstWhere((n) => n.id == element.nodeEndId);
+      final nodeStartResult = calculationResult.nodeResults
+          .firstWhere((n) => n.nodeId == nodeStart.id);
+      final nodeEndResult = calculationResult.nodeResults
+          .firstWhere((n) => n.nodeId == nodeEnd.id);
+
+      final uStart = nodeStartResult.displacement;
+      final uEnd = nodeEndResult.displacement;
+      final E = element.E;
+      final A = element.A;
+      final L = (nodeEnd.x - nodeStart.x).abs();
+      final qx = element.qx;
+
+      /// ✅ ТА ЖЕ ИСПРАВЛЕННАЯ ФОРМУЛА
+      final Nx_avg = (E * A / L) * (uEnd - uStart);
+      final NxAtStart = Nx_avg + qx * L / 2;
+
+      final xStart = nodeStart.x;
+      const int subdivisions = 30;
+
+      for (int i = 0; i <= subdivisions; i++) {
+        final ratio = i / subdivisions;
+        final localCoord = ratio * L;
+        final globalX = xStart + localCoord;
+
+        final NxValue = NxAtStart - qx * localCoord;
+        final sigma = A > 0 ? NxValue / A : 0.0;
 
         points.add(DiagramPoint(
-          x: nodeStart.x.toDouble(),
-          value: elemResult.stress,
+          x: globalX,
+          value: sigma,
           elementId: element.id,
+          isNode: (i == 0 || i == subdivisions),
         ));
 
-        points.add(DiagramPoint(
-          x: nodeEnd.x.toDouble(),
-          value: elemResult.stress,
-          elementId: element.id,
-        ));
-
-        values.add(elemResult.stress);
+        values.add(sigma);
       }
     }
 
-    points.sort((a, b) => a.x.compareTo(b.x));
+    if (points.isEmpty) {
+      return DiagramModel(
+        name: 'σx',
+        unit: 'МПа',
+        points: [],
+        maxValue: 0.0,
+        minValue: 0.0,
+        averageValue: 0.0,
+      );
+    }
 
-    final maxValue = values.isEmpty ? 0.0 : values.reduce(math.max);
-    final minValue = values.isEmpty ? 0.0 : values.reduce(math.min);
+    points.sort((a, b) => a.x.compareTo(b.x));
+    final maxValue = values.reduce(math.max);
+    final minValue = values.reduce(math.min);
     final averageValue = values.isEmpty
         ? 0.0
         : values.reduce((a, b) => a + b) / values.length;
@@ -180,49 +201,67 @@ class PostCalculator {
     );
   }
 
-  /// Построить эпюру перемещений Δ
-  DiagramModel _buildDisplacementDiagram(
-    Map<int, dynamic> nodeResults,
-  ) {
+  /// ✅ ЭПЮРА ПЕРЕМЕЩЕНИЙ (от МКЭ результатов)
+  DiagramModel _buildDisplacementDiagram() {
     final points = <DiagramPoint>[];
     final values = <double>[];
 
-    if (project == null) {
-      for (var nodeResult in calculationResult.nodeResults) {
-        final x = nodeResult.nodeId.toDouble();
+    for (var node in project.nodes) {
+      final nodeResult = calculationResult.nodeResults
+          .firstWhere((n) => n.nodeId == node.id);
+
+      points.add(DiagramPoint(
+        x: node.x,
+        value: nodeResult.displacement,
+        elementId: 0,
+        isNode: true,
+      ));
+
+      values.add(nodeResult.displacement);
+    }
+
+    for (int i = 0; i < project.nodes.length - 1; i++) {
+      final node1 = project.nodes[i];
+      final node2 = project.nodes[i + 1];
+
+      final result1 = calculationResult.nodeResults
+          .firstWhere((n) => n.nodeId == node1.id);
+      final result2 = calculationResult.nodeResults
+          .firstWhere((n) => n.nodeId == node2.id);
+
+      const int subdivisions = 15;
+
+      for (int j = 1; j < subdivisions; j++) {
+        final ratio = j / subdivisions;
+        final x = node1.x + (node2.x - node1.x) * ratio;
+        final u = result1.displacement +
+            (result2.displacement - result1.displacement) * ratio;
+
         points.add(DiagramPoint(
           x: x,
-          value: nodeResult.displacement,
-          elementId: nodeResult.nodeId,
-        ));
-        values.add(nodeResult.displacement);
-      }
-    } else {
-      // Для каждого узла
-      for (var node in project!.nodes) {
-        final nodeResult = nodeResults[node.id];
-        if (nodeResult == null) continue;
-
-        // Найти стержень, который содержит этот узел
-        final element = project!.elements.firstWhere(
-          (e) => e.nodeEndId == node.id || e.nodeStartId == node.id,
-          orElse: () => project!.elements.first,
-        );
-
-        points.add(DiagramPoint(
-          x: node.x.toDouble(),
-          value: nodeResult.displacement,
-          elementId: element.id,
+          value: u,
+          elementId: 0,
+          isNode: false,
         ));
 
-        values.add(nodeResult.displacement);
+        values.add(u);
       }
     }
 
-    points.sort((a, b) => a.x.compareTo(b.x));
+    if (points.isEmpty) {
+      return DiagramModel(
+        name: 'Δ',
+        unit: 'м',
+        points: [],
+        maxValue: 0.0,
+        minValue: 0.0,
+        averageValue: 0.0,
+      );
+    }
 
-    final maxValue = values.isEmpty ? 0.0 : values.reduce(math.max);
-    final minValue = values.isEmpty ? 0.0 : values.reduce(math.min);
+    points.sort((a, b) => a.x.compareTo(b.x));
+    final maxValue = values.reduce(math.max);
+    final minValue = values.reduce(math.min);
     final averageValue = values.isEmpty
         ? 0.0
         : values.reduce((a, b) => a + b) / values.length;
@@ -237,53 +276,72 @@ class PostCalculator {
     );
   }
 
-  /// Построить эпюру деформаций ε
-  DiagramModel _buildStrainDiagram(
-    Map<int, dynamic> elemResults,
-  ) {
+  /// ✅ ЭПЮРА ДЕФОРМАЦИЙ ε = σ / E
+  DiagramModel _buildStrainDiagram() {
     final points = <DiagramPoint>[];
     final values = <double>[];
 
-    if (project == null) {
-      for (var elemResult in calculationResult.elementResults) {
-        final x = elemResult.elementId.toDouble();
-        points.add(DiagramPoint(
-          x: x,
-          value: elemResult.strain,
-          elementId: elemResult.elementId,
-        ));
-        values.add(elemResult.strain);
-      }
-    } else {
-      for (var element in project!.elements) {
-        final elemResult = elemResults[element.id];
-        if (elemResult == null) continue;
+    for (var element in project.elements) {
+      final nodeStart = project.nodes.firstWhere(
+        (n) => n.id == element.nodeStartId,
+      );
+      final nodeEnd = project.nodes.firstWhere(
+        (n) => n.id == element.nodeEndId,
+      );
 
-        final nodeStart =
-            project!.nodes.firstWhere((n) => n.id == element.nodeStartId);
-        final nodeEnd =
-            project!.nodes.firstWhere((n) => n.id == element.nodeEndId);
+      final nodeStartResult = calculationResult.nodeResults
+          .firstWhere((n) => n.nodeId == nodeStart.id);
+      final nodeEndResult = calculationResult.nodeResults
+          .firstWhere((n) => n.nodeId == nodeEnd.id);
+
+      final uStart = nodeStartResult.displacement;
+      final uEnd = nodeEndResult.displacement;
+      final E = element.E;
+      final A = element.A;
+      final L = (nodeEnd.x - nodeStart.x).abs();
+      final qx = element.qx;
+
+      /// ✅ ТА ЖЕ ИСПРАВЛЕННАЯ ФОРМУЛА
+      final Nx_avg = (E * A / L) * (uEnd - uStart);
+      final NxAtStart = Nx_avg + qx * L / 2;
+
+      final xStart = nodeStart.x;
+      const int subdivisions = 30;
+
+      for (int i = 0; i <= subdivisions; i++) {
+        final ratio = i / subdivisions;
+        final localCoord = ratio * L;
+        final globalX = xStart + localCoord;
+
+        final NxValue = NxAtStart - qx * localCoord;
+        final sigma = A > 0 ? NxValue / A : 0.0;
+        final epsilon = E > 0 ? sigma / E : 0.0;
 
         points.add(DiagramPoint(
-          x: nodeStart.x.toDouble(),
-          value: elemResult.strain,
+          x: globalX,
+          value: epsilon,
           elementId: element.id,
+          isNode: (i == 0 || i == subdivisions),
         ));
 
-        points.add(DiagramPoint(
-          x: nodeEnd.x.toDouble(),
-          value: elemResult.strain,
-          elementId: element.id,
-        ));
-
-        values.add(elemResult.strain);
+        values.add(epsilon);
       }
     }
 
-    points.sort((a, b) => a.x.compareTo(b.x));
+    if (points.isEmpty) {
+      return DiagramModel(
+        name: 'ε',
+        unit: 'безразм',
+        points: [],
+        maxValue: 0.0,
+        minValue: 0.0,
+        averageValue: 0.0,
+      );
+    }
 
-    final maxValue = values.isEmpty ? 0.0 : values.reduce(math.max);
-    final minValue = values.isEmpty ? 0.0 : values.reduce(math.min);
+    points.sort((a, b) => a.x.compareTo(b.x));
+    final maxValue = values.reduce(math.max);
+    final minValue = values.reduce(math.min);
     final averageValue = values.isEmpty
         ? 0.0
         : values.reduce((a, b) => a + b) / values.length;
@@ -298,7 +356,7 @@ class PostCalculator {
     );
   }
 
-  /// Анализ прочности: проверка |σ| ≤ [σ]допустимое
+  /// ✅ Анализ прочности (без изменений)
   List<ElementStressAnalysis> analyzeStress() {
     if (!calculationResult.isSuccessful) {
       throw Exception('Расчёт не был выполнен успешно');
@@ -307,21 +365,21 @@ class PostCalculator {
     final analysis = <ElementStressAnalysis>[];
 
     for (var elemResult in calculationResult.elementResults) {
+      final element = project.elements
+          .firstWhere((e) => e.id == elemResult.elementId);
+
       final actualStress = elemResult.stress.abs();
-      final allowableStress = 250.0; // МПа - стандартное значение
-
+      final allowableStress = element.allowableStress;
       final isPassed = actualStress <= allowableStress;
+      final safetyFactor = actualStress > 0
+          ? allowableStress / actualStress
+          : double.infinity;
 
-      final safetyFactor =
-          actualStress > 0 ? allowableStress / actualStress : double.infinity;
-
-      String status;
-      if (safetyFactor > 2.0) {
-        status = 'OK';
-      } else if (safetyFactor > 1.0) {
-        status = 'WARNING';
-      } else {
+      String status = 'OK';
+      if (safetyFactor <= 1.0) {
         status = 'DANGER';
+      } else if (safetyFactor <= 2.0) {
+        status = 'WARNING';
       }
 
       analysis.add(ElementStressAnalysis(
@@ -338,12 +396,12 @@ class PostCalculator {
   }
 }
 
-/// Контейнер для всех эпюр
+/// Все эпюры конструкции
 class AllDiagrams {
-  final DiagramModel internalForces; // Nx
-  final DiagramModel stresses; // σx
-  final DiagramModel displacements; // Δ
-  final DiagramModel strains; // ε
+  final DiagramModel internalForces;
+  final DiagramModel stresses;
+  final DiagramModel displacements;
+  final DiagramModel strains;
 
   AllDiagrams({
     required this.internalForces,

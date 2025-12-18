@@ -85,6 +85,7 @@ class PreBloc extends Bloc<PreEvent, PreState> {
       final curProject = repository.currentProject;
 
       if (curProject == null || curProject.nodes.length <= 1) {
+        curProject!.deleteLastNode();
         emit(PreFailureState(message: 'Нельзя удалить последний узел'));
         return;
       }

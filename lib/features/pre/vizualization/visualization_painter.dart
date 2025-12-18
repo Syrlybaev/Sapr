@@ -69,7 +69,7 @@ class VisualizationPainter extends CustomPainter {
     _drawCenterLine(canvas);
     _drawAxis(canvas);
     _drawElements(canvas);
-    _drawDistributedLoads(canvas);
+    // _drawDistributedLoads(canvas);
     _drawLongitudinalLoads(canvas);
     _drawNodes(canvas);
     _drawPointLoads(canvas);
@@ -161,70 +161,70 @@ class VisualizationPainter extends CustomPainter {
     }
   }
 
-  /// Поперечная нагрузка qy (вверх/вниз)
-  void _drawDistributedLoads(Canvas canvas) {
-    for (final element in model.elements) {
-      if (element.qy == 0) continue;
+  // /// Поперечная нагрузка qy (вверх/вниз)
+  // void _drawDistributedLoads(Canvas canvas) {
+  //   for (final element in model.elements) {
+  //     if (element.qy == 0) continue;
 
-      final startNode = model.nodes.firstWhere(
-        (n) => n.id == element.nodeStartId,
-        orElse: () => NodeModel(id: -1, x: 0),
-      );
-      final endNode = model.nodes.firstWhere(
-        (n) => n.id == element.nodeEndId,
-        orElse: () => NodeModel(id: -1, x: 0),
-      );
+  //     final startNode = model.nodes.firstWhere(
+  //       (n) => n.id == element.nodeStartId,
+  //       orElse: () => NodeModel(id: -1, x: 0),
+  //     );
+  //     final endNode = model.nodes.firstWhere(
+  //       (n) => n.id == element.nodeEndId,
+  //       orElse: () => NodeModel(id: -1, x: 0),
+  //     );
 
-      final x1 = model.xToPixel(startNode.x);
-      final x2 = model.xToPixel(endNode.x);
-      final y = model.centerY; // ← Центральная ось
-      final arrowHeight = model.distributedLoadArrowHeight;
+  //     final x1 = model.xToPixel(startNode.x);
+  //     final x2 = model.xToPixel(endNode.x);
+  //     final y = model.centerY; // ← Центральная ось
+  //     final arrowHeight = model.distributedLoadArrowHeight;
 
-      for (int i = 0; i <= model.distributedLoadArrowCount; i++) {
-        final t = i / model.distributedLoadArrowCount;
-        final xPos = x1 + (x2 - x1) * t;
+  //     for (int i = 0; i <= model.distributedLoadArrowCount; i++) {
+  //       final t = i / model.distributedLoadArrowCount;
+  //       final xPos = x1 + (x2 - x1) * t;
 
-        // qy > 0 = вверх (стрелка идёт ВВЕРХ)
-        // qy < 0 = вниз (стрелка идёт ВНИЗ)
-        final isPositive = element.qy > 0;
+  //       // qy > 0 = вверх (стрелка идёт ВВЕРХ)
+  //       // qy < 0 = вниз (стрелка идёт ВНИЗ)
+  //       final isPositive = element.qy > 0;
 
-        // Стрелка ВСЕГДА начинается с центральной оси (y)
-        final startY = y;
-        final endY = y + (isPositive ? -arrowHeight : arrowHeight);
+  //       // Стрелка ВСЕГДА начинается с центральной оси (y)
+  //       final startY = y;
+  //       final endY = y + (isPositive ? -arrowHeight : arrowHeight);
 
-        canvas.drawLine(
-          Offset(xPos, startY),
-          Offset(xPos, endY),
-          distribLoadPaint,
-        );
+  //       canvas.drawLine(
+  //         Offset(xPos, startY),
+  //         Offset(xPos, endY),
+  //         distribLoadPaint,
+  //       );
 
-        // Стрелка указывает в ту же сторону, что и направление нагрузки
-        _drawArrowHeadVertical(
-          canvas,
-          Offset(xPos, endY),
-          isPositive ? -1 : 1, // ← -1 для вверх, 1 для вниз
-          distribLoadPaint,
-        );
-      }
+  //       // Стрелка указывает в ту же сторону, что и направление нагрузки
+  //       _drawArrowHeadVertical(
+  //         canvas,
+  //         Offset(xPos, endY),
+  //         isPositive ? -1 : 1, // ← -1 для вверх, 1 для вниз
+  //         distribLoadPaint,
+  //       );
+  //     }
 
-      // Текст подписи
-      final textOffsetX = (x1 + x2) / 2 - 40;
-      final textOffsetY =
-          element.qy > 0
-              ? y -
-                  arrowHeight -
-                  18 // Выше стрелок если вверх
-              : y + arrowHeight + 8; // Ниже стрелок если вниз
+  //     // Текст подписи
+  //     final textOffsetX = (x1 + x2) / 2 - 40;
+  //     final textOffsetY =
+  //         element.qy > 0
+  //             ? y -
+  //                 arrowHeight -
+  //                 18 // Выше стрелок если вверх
+  //             : y + arrowHeight + 8; // Ниже стрелок если вниз
 
-      _drawText(
-        canvas,
-        'qy=${element.qy.toStringAsFixed(1)} Н/м',
-        Offset(textOffsetX, textOffsetY),
-        Colors.green,
-        fontSize: 10,
-      );
-    }
-  }
+  //     _drawText(
+  //       canvas,
+  //       'qy=${element.qy.toStringAsFixed(1)} Н/м',
+  //       Offset(textOffsetX, textOffsetY),
+  //       Colors.green,
+  //       fontSize: 10,
+  //     );
+  //   }
+  // }
 
   /// Продольная нагрузка qx (вдоль оси стержня)
   void _drawLongitudinalLoads(Canvas canvas) {

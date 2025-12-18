@@ -155,25 +155,25 @@ class NodeDataSource extends DataGridSource {
 
       if (currentIndex == -1) return false;
 
-      // if (currentIndex > 0) {
-      //   final double prevX = _nodes[currentIndex - 1].x;
-      //   if (parsed < prevX) {
-      //     _showError(
-      //       'Координата X должна быть >= предыдущего узла (${prevX.toStringAsFixed(2)})',
-      //     );
-      //     return false;
-      //   }
-      // }
+      if (currentIndex > 0) {
+        final double prevX = _nodes[currentIndex - 1].x;
+        if (parsed < prevX) {
+          _showError(
+            'Координата X должна быть >= предыдущего узла (${prevX.toStringAsFixed(2)})',
+          );
+          return false;
+        }
+      }
 
-      // if (currentIndex < _nodes.length - 1) {
-      //   final double nextX = _nodes[currentIndex + 1].x;
-      //   if (parsed > nextX) {
-      //     _showError(
-      //       'Координата X должна быть <= следующего узла (${nextX.toStringAsFixed(2)})',
-      //     );
-      //     return false;
-      //   }
-      // }
+      if (currentIndex < _nodes.length - 1) {
+        final double nextX = _nodes[currentIndex + 1].x;
+        if (parsed > nextX) {
+          _showError(
+            'Координата X должна быть <= следующего узла (${nextX.toStringAsFixed(2)})',
+          );
+          return false;
+        }
+      }
     }
 
     return true;

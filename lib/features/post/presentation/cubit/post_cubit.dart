@@ -5,8 +5,9 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
 import 'package:saprbar_desktop/core/models/project_model.dart';
+import 'package:saprbar_desktop/features/post/data/datasources/post_calculator.dart';
 import 'package:saprbar_desktop/features/post/data/models/diagram_model.dart';
-import 'package:saprbar_desktop/features/post/data/repositories/post_calculator.dart';
+
 import 'package:saprbar_desktop/features/post/domain/entities/stress_analysis.dart';
 import 'package:saprbar_desktop/features/pro/data/models/calculation_result_model.dart';
 

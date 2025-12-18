@@ -5,7 +5,7 @@ class ElementModel extends Equatable {
   final int id; // ID стержня
   final int nodeStartId; // ID узла начала
   final int nodeEndId; // ID узла конца
-  final double qy; // [Н/м] поперечная погонная нагрузка (вдоль оси y)
+  // final double qy; // [Н/м] поперечная погонная нагрузка (вдоль оси y)
   final double qx; // [Н/м] продольная погонная нагрузка (вдоль оси x)
   final double E; // модуль упругости
   final double A; // площадь сечения
@@ -15,13 +15,14 @@ class ElementModel extends Equatable {
     required this.id,
     required this.nodeStartId,
     required this.nodeEndId,
-    double? q,
+    // double? q,
     double? qx,
     double? E,
     double? A,
     double? allowableStress,
-  }) : qy = q ?? 0.0,
+  }) : 
        qx = qx ?? 0.0,
+      //  qy = q ?? 0.0,
        E = E ?? 0.0,
        A = A ?? 0.0,
        allowableStress = allowableStress ?? 0.0;
@@ -40,7 +41,7 @@ class ElementModel extends Equatable {
       id: id ?? this.id,
       nodeStartId: nodeStartId ?? this.nodeStartId,
       nodeEndId: nodeEndId ?? this.nodeEndId,
-      q: q ?? this.qy,
+      // q: q ?? this.qy,
       qx: qx ?? this.qx,
       E: E ?? this.E,
       A: A ?? this.A,
@@ -53,7 +54,7 @@ class ElementModel extends Equatable {
     id,
     nodeStartId,
     nodeEndId,
-    qy,
+    // qy,
     qx,
     E,
     A,
@@ -64,7 +65,7 @@ class ElementModel extends Equatable {
     id: json['id'] as int,
     nodeStartId: json['nodeStartId'] as int,
     nodeEndId: json['nodeEndId'] as int,
-    q: (json['q'] as num?)?.toDouble() ?? 0.0,
+    // q: (json['q'] as num?)?.toDouble() ?? 0.0,
     qx: (json['qx'] as num?)?.toDouble() ?? 0.0,
     E: (json['E'] as num?)?.toDouble() ?? 0.0,
     A: (json['A'] as num?)?.toDouble() ?? 0.0,
@@ -75,7 +76,7 @@ class ElementModel extends Equatable {
     'id': id,
     'nodeStartId': nodeStartId,
     'nodeEndId': nodeEndId,
-    'q': qy,
+    // 'q': qy,
     'qx': qx,
     'E': E,
     'A': A,

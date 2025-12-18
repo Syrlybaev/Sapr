@@ -154,7 +154,7 @@ class FemCalculator {
 
     // Добавить эквивалентные нагрузки от погонных нагрузок
     for (var elem in elements) {
-      if (elem.qx == 0 && elem.qy == 0) continue;
+      if (elem.qx == 0) continue;
 
       final nodeStart = nodes.firstWhere((n) => n.id == elem.nodeStartId);
       final nodeEnd = nodes.firstWhere((n) => n.id == elem.nodeEndId);
@@ -164,8 +164,8 @@ class FemCalculator {
 
       // Длина стержня
       final dx = nodeEnd.x - nodeStart.x;
-      final dy = nodeEnd.y - nodeStart.y;
-      final length = math.sqrt(dx * dx + dy * dy);
+      // final dy = nodeEnd.y - nodeStart.y;
+      final length = math.sqrt(dx * dx);
 
       // Эквивалентные силы от погонной нагрузки
       // Для равномерной нагрузки: половина в каждый узел

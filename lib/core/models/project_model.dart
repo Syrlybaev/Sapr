@@ -21,12 +21,12 @@ class ProjectModel extends Equatable {
   /// Удалить последний узел и связанные стержни
   /// Возвращает новый ProjectModel (не мутирует текущий)
   ProjectModel deleteLastNode() {
-    if (nodes.isEmpty) return this;
-
-    final List<NodeModel> newNodes = List.from(nodes)..removeLast();
-    final int deletedNodeId = nodes.last.id;
+    if (nodes.isEmpty || nodes.length == 1) {
+      return copyWith(elements: List.empty());
+    }
 
     // Удаляем стержни, связанные с удалённым узлом
+    final int deletedNodeId = nodes.last.id;
     final List<ElementModel> newElements =
         elements
             .where(
@@ -36,6 +36,7 @@ class ProjectModel extends Equatable {
             )
             .toList();
 
+    final List<NodeModel> newNodes = List.from(nodes)..removeLast();
     return copyWith(nodes: newNodes, elements: newElements);
   }
 

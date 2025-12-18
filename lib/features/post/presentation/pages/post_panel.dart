@@ -1,5 +1,3 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first, prefer_const_constructors
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -91,8 +89,8 @@ class _PostPanelState extends State<PostPanel> with TickerProviderStateMixin {
               isScrollable: true,
               tabs: const [
                 Tab(child: Text('Nx (Силы)')),
-                Tab(child: Text('σ (Напряжения)')),
                 Tab(child: Text('Δ (Перемещения)')),
+                Tab(child: Text('σ (Напряжения)')),
                 Tab(child: Text('Анализ')),
               ],
               labelColor: Colors.blue,
@@ -171,8 +169,8 @@ class _PostPanelState extends State<PostPanel> with TickerProviderStateMixin {
         controller: _tabController,
         children: [
           DiagramsView(diagram: postState.internalForces, onRefresh: () {}),
-          DiagramsView(diagram: postState.stresses, onRefresh: () {}),
           DiagramsView(diagram: postState.displacements, onRefresh: () {}),
+          DiagramsView(diagram: postState.stresses, onRefresh: () {}),
           AnalysisView(
             analysis: postState.analysis,
             analysisData: postState.analysis,
